@@ -1,4 +1,4 @@
-package org.example;
+package com.progresssoft;
 
 import java.util.ArrayList;
 import java.util.Scanner;

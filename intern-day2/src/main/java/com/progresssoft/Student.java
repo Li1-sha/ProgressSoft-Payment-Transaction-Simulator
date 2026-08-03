@@ -1,4 +1,4 @@
-package org.example;
+package com.progresssoft;
 
 public class Student {
 
