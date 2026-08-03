@@ -7,7 +7,6 @@ public class Main {
          //GuessingGame game = new GuessingGame();
          //game.startGame();
          GradeTracker tracker = new GradeTracker();
-         tracker.enterStud((Student) null);
          System.out.println("Class average: "+tracker.calcAvg());
          System.out.println("Top student: "+tracker.findTopStudent());
 
