@@ -9,7 +9,9 @@ public class GradeTracker {
 
     public GradeTracker(){
         classroom = new ArrayList<>();
+
     }
+    public void enterStud(){
         Scanner scanner = new Scanner(System.in);
         while (true){
             System.out.println("Enter student name ('end' to exit):");
@@ -29,9 +31,12 @@ public class GradeTracker {
 
     public double calcAvg(){
         double sum = 0;
+        for(Student s : classroom)
+        {
             sum += s.getGrade();
         }
         return sum / classroom.size();
+
     }
     public String findTopStudent(){
         Student topStudent = classroom.get(0);

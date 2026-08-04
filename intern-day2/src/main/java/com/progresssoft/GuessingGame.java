@@ -16,12 +16,16 @@ public class GuessingGame {
     public void startGame(){
         int userNum = 0;
         System.out.println("** Number Guessing game **");
+        System.out.println("Guess the number: ");
 
         while (userNum != secretNum){
             userNum = scanner.nextInt();
             if (userNum > secretNum) {
+                System.out.println("too high");
             }else if (userNum < secretNum){
+                System.out.println("too low");
             }else{
+                System.out.println("Correct!");
             }
         }
         scanner.close();
