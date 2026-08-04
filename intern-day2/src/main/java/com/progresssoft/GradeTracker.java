@@ -30,21 +30,30 @@ public class GradeTracker {
     }
 
     public double calcAvg(){
-        double sum = 0;
-        for(Student s : classroom)
-        {
-            sum += s.getGrade();
+        try {
+            double sum = 0;
+            for (Student s : classroom) {
+                sum += s.getGrade();
+            }
+            return sum / classroom.size();
+        } catch (ArithmeticException | IndexOutOfBoundsException | NullPointerException e) {
+            System.err.println("Error calculating average: " + e.getMessage());
+            return 0.0;
         }
-        return sum / classroom.size();
 
     }
     public String findTopStudent(){
-        Student topStudent = classroom.get(0);
-        for(Student s: classroom){
-            if(s.getGrade()> topStudent.getGrade()){
-                topStudent = s;
+        try {
+            Student topStudent = classroom.get(0);
+            for (Student s : classroom) {
+                if (s.getGrade() > topStudent.getGrade()) {
+                    topStudent = s;
+                }
             }
+            return topStudent.getName();
+        } catch (IndexOutOfBoundsException | NullPointerException e) {
+            System.err.println("Error finding top student: " + e.getMessage());
+            return "No students available";
         }
-        return topStudent.getName();
     }
 }
