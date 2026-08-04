@@ -7,6 +7,10 @@ public class GuessingGame {
     private final int secretNum;
     private final Scanner scanner;
 
+    public int getSecretNum() {
+        return secretNum;
+    }
+
     public GuessingGame(){
         Random random = new Random();
         this.scanner = new Scanner(System.in);
