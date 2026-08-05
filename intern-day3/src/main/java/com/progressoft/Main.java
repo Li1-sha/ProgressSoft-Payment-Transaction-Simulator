@@ -42,29 +42,49 @@ public class Main {
         boolean running = true;
         while (running) {
             printMenu();
-            switch (readInt("Choice: ")) {
-                case 1 -> addBook();
-                case 2 -> removeBook();
-                case 3 -> listBooks();
-                case 4 -> searchBook();
-                case 5 -> System.out.println("Borrowed count: " + library.borrowedCount());
-                case 6 -> setBorrowed(true);
-                case 7 -> setBorrowed(false);
-                case 8 -> System.out.println(library.catalogSummary());
-                case 0 -> { System.out.println("Goodbye!"); running = false; }
-                default -> System.out.println("Invalid choice.");
+            int choice = readInt("Choice: ");
+            switch (choice) {
+                case 1:
+                    addBook();
+                    break;
+                case 2:
+                    removeBook();
+                    break;
+                case 3:
+                    listBooks();
+                    break;
+                case 4:
+                    searchBook();
+                    break;
+                case 5:
+                    System.out.println("Borrowed count: " + library.borrowedCount());
+                    break;
+                case 6:
+                    setBorrowed(true);
+                    break;
+                case 7:
+                    setBorrowed(false);
+                    break;
+                case 8:
+                    System.out.println(library.catalogSummary());
+                    break;
+                case 0:
+                    System.out.println("Goodbye!");
+                    running = false;
+                    break;
+                default:
+                    System.out.println("Invalid choice.");
             }
             System.out.println();
         }
     }
 
     private static void printMenu() {
-        System.out.println("""
-                1. Add book       5. Borrowed count
-                2. Remove book    6. Mark borrowed
-                3. List books     7. Mark returned
-                4. Search title   8. Catalog summary
-                0. Exit""");
+        System.out.println("1. Add book       5. Borrowed count\n" +
+                "2. Remove book    6. Mark borrowed\n" +
+                "3. List books     7. Mark returned\n" +
+                "4. Search title   8. Catalog summary\n" +
+                "0. Exit");
     }
 
     private static void addBook() {
@@ -97,7 +117,7 @@ public class Main {
 
     private static void setBorrowed(boolean borrowed) {
         Optional<Book> result = library.searchByTitle(readLine("Title: "));
-        if (result.isEmpty()) {
+        if (!result.isPresent()) {
             System.out.println("Not found.");
             return;
         }
