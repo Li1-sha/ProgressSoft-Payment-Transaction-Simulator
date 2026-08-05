@@ -1,4 +1,4 @@
-# TDD Cheat Sheet
+# TDD Overview
 
 ## The idea
 Write the test **before** the code. Let the test tell you what to build.
