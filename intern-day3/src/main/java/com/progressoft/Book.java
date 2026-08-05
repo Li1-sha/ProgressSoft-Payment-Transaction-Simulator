@@ -10,41 +10,24 @@ public class Book {
     public Book(String title, String author) {
         this.title = title;
         this.author = author;
-        this.borrowed = false;
     }
 
-    public String getTitle() {
-        return title;
-    }
-
-    public String getAuthor() {
-        return author;
-    }
-
-    public boolean isBorrowed() {
-        return borrowed;
-    }
-
-    public void setBorrowed(boolean borrowed) {
-        this.borrowed = borrowed;
-    }
+    public String getTitle() { return title; }
+    public String getAuthor() { return author; }
+    public boolean isBorrowed() { return borrowed; }
+    public void setBorrowed(boolean borrowed) { this.borrowed = borrowed; }
 
     @Override
     public String toString() {
-        String result = title + " by " + author;
-        if (borrowed) {
-            result += " [borrowed]";
-        }
-        return result;
+        return borrowed ? title + " by " + author + " [borrowed]" : title + " by " + author;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (!(o instanceof Book)) return false;
         Book book = (Book) o;
-        return title.equalsIgnoreCase(book.title) &&
-                author.equalsIgnoreCase(book.author);
+        return title.equalsIgnoreCase(book.title) && author.equalsIgnoreCase(book.author);
     }
 
     @Override
