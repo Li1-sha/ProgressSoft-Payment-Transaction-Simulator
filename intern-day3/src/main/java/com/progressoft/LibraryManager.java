@@ -1,10 +1,13 @@
 package com.progressoft;
 
+import com.progressoft.model.Book;
+import com.progressoft.service.Library;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 
-public class Main {
+public class LibraryManager {
     private static final Library library = new Library();
     private static final Scanner scanner = new Scanner(System.in);
 

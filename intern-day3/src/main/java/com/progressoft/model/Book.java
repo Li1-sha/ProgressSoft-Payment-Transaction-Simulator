@@ -1,4 +1,4 @@
-package com.progressoft;
+package com.progressoft.model;
 
 import java.util.Objects;
 

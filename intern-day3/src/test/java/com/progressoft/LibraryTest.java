@@ -1,5 +1,7 @@
 package com.progressoft;
 
+import com.progressoft.model.Book;
+import com.progressoft.service.Library;
 import org.junit.Before;
 import org.junit.Test;
 

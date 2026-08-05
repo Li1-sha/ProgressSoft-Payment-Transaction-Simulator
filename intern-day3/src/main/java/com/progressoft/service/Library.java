@@ -1,4 +1,6 @@
-package com.progressoft;
+package com.progressoft.service;
+
+import com.progressoft.model.Book;
 
 import java.util.ArrayList;
 import java.util.List;
