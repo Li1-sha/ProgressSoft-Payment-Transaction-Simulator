@@ -27,4 +27,16 @@ public class OrderServiceTest {
         assertTrue(result);
         verify(mockGateway, times(1)).charge(100.0);
     }
+
+    @Test
+    void testPlaceOrder_gatewayDeclines_shouldReturnFalse() {
+        when(mockGateway.charge(anyDouble())).thenReturn(false);
+
+        OrderService service = new OrderService(mockGateway);
+
+        boolean result = service.placeOrder(50.0);
+
+        assertFalse(result);
+        verify(mockGateway, times(1)).charge(50.0);
+    }
 }
