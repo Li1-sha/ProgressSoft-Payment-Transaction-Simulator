@@ -1,4 +1,5 @@
 package com.tdd;
 
-public class PaymentGateway {
+public interface PaymentGateway {
+    boolean charge(double amount);
 }
