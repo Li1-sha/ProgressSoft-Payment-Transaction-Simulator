@@ -1,36 +1,42 @@
 package com.tdd;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class CalculatorTest {
 
-    @Test
+    @ParameterizedTest
+    @CsvSource({
+            "2, 3, 5",
+            "-5, -3, -8",
+            "5, -3, 2",
+            "-5, 3, -2",
+            "0, 5, 5",
+            "0, -5, -5",
+            "0, 0, 0"
+    })
     void testAdd() {
         Calculator calc = new Calculator();
         int result = calc.add(2, 3);
         assertEquals(5, result);
     }
 
-    @Test
-    void testAddTwoNegativeNumbers() {
-        Calculator calc = new Calculator();
-        int result = calc.add(-5, -3);
-        assertEquals(-8, result);
-    }
-
-    @Test
+    @ParameterizedTest
+    @CsvSource({
+            "10, 4, 6",
+            "-10, -4, -6",
+            "5, -3, 8",
+            "-5, 3, -8",
+            "5, 0, 5",
+            "0, 5, -5",
+            "0, 0, 0"
+    })
     void testSubtract() {
         Calculator calc = new Calculator();
         int result = calc.subtract(10, 4);
         assertEquals(6, result);
-    }
-
-    @Test
-    void testSubtractTwoNegativeNumbers() {
-        Calculator calc = new Calculator();
-        int result = calc.subtract(-10,-4);
-        assertEquals(-6, result);
     }
 
     @Test
