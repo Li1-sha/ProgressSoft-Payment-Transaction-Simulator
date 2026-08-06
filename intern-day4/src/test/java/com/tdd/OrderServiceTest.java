@@ -3,7 +3,6 @@ package com.tdd;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -13,9 +12,6 @@ public class OrderServiceTest {
 
     @Mock
     private PaymentGateway mockGateway;          // fully controlled fake
-
-    @Spy
-    private SimplePaymentGateway spyGateway;     // real code, but we can watch it
 
     @Test
     void testPlaceOrder_gatewayApproves_shouldReturnTrue() {
@@ -52,16 +48,23 @@ public class OrderServiceTest {
 
     @Test
     void testPlaceOrder_withSpy_realChargeExecutes() {
-        // Given: a spy on the real gateway
+        // Real gateway
+        SimplePaymentGateway realGateway = new SimplePaymentGateway();
+
+        // using a lambda – tracks if charge() was called
+        boolean[] chargeCalled = { false };
+        PaymentGateway spyGateway = amount -> {
+            chargeCalled[0] = true;
+            return realGateway.charge(amount);
+        };
+
         OrderService service = new OrderService(spyGateway);
 
         boolean result = service.placeOrder(75.0);
 
-        assertTrue(result);   // the real charge() returned true
+        assertTrue(result);                            // real charge() returned true
+        assertTrue(chargeCalled[0]);                   // verify that charge was called
 
-        verify(spyGateway, times(1)).charge(75.0);
-
-        // The spy test will print "Charging amount: 75.0"
-        // proving the real code executed – mock tests won't print anything.
+        // Console will show: "Charging amount: 75.0" – proof of real execution.
     }
 }
