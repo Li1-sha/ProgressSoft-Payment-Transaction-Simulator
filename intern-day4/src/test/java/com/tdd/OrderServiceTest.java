@@ -49,4 +49,19 @@ public class OrderServiceTest {
         assertFalse(result);
         verify(mockGateway, never()).charge(anyDouble());
     }
+
+    @Test
+    void testPlaceOrder_withSpy_realChargeExecutes() {
+        // Given: a spy on the real gateway
+        OrderService service = new OrderService(spyGateway);
+
+        boolean result = service.placeOrder(75.0);
+
+        assertTrue(result);   // the real charge() returned true
+
+        verify(spyGateway, times(1)).charge(75.0);
+
+        // The spy test will print "Charging amount: 75.0"
+        // proving the real code executed – mock tests won't print anything.
+    }
 }
