@@ -10,6 +10,7 @@ public class CalculatorTest {
 
     private Calculator calc;
 
+    //@BeforeAll - useful for integration tests where setup is heavy (starting a database or loading a large file).
     @BeforeEach //This eliminates repeated new Calculator() in every test
     void setUp() {
         calc = new Calculator();   // fresh instance for each test
