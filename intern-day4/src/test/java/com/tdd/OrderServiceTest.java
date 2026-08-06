@@ -39,4 +39,14 @@ public class OrderServiceTest {
         assertFalse(result);
         verify(mockGateway, times(1)).charge(50.0);
     }
+
+    @Test
+    void testPlaceOrder_invalidAmount_shouldReturnFalseAndNeverCallGateway() {
+        OrderService service = new OrderService(mockGateway);
+
+        boolean result = service.placeOrder(-5.0);
+
+        assertFalse(result);
+        verify(mockGateway, never()).charge(anyDouble());
+    }
 }
