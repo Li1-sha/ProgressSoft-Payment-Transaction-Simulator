@@ -39,4 +39,11 @@ public class CalculatorTest {
         int result = calc.multiply(3,4);
         assertEquals(12,result);
     }
+
+    @Test
+    void testDivide(){
+        Calculator calc = new Calculator();
+        int result = calc.divide(10,2);
+        assertEquals(5, result);
+    }
 }
