@@ -5,38 +5,67 @@ import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.inmemory.InMemoryOrderRepository;
 import com.progressoft.service.OrderService;
+import com.progressoft.validation.OrderEnricher;
+import com.progressoft.validation.PaymentValidator;
+import com.progressoft.validation.Validators;
 
 public class Main {
 
     public static void main(String[] args) {
-        // 1. Wire dependencies
+        // 1. Setup Repository
         OrderRepository repository = new InMemoryOrderRepository();
 
-        // Dummy PaymentGateway implementation
-        PaymentGateway paymentGateway = order -> {
-            System.out.println("Charging $" + order.getAmount() +
-                    " for customer: " + order.getCustomerName());
-        };
+        // 2. Setup Payment Gateway (Dummy)
+        PaymentGateway paymentGateway = order ->
+                System.out.println("💰 Charging $" + order.getAmount() +
+                        " in " + order.getCurrency());
 
-        OrderService service = new OrderService(repository, paymentGateway);
+        // 3. Build Composers (OrderEnricher composition)
+        OrderEnricher enricher = Validators.defaultCurrency("USD")
+                .andThen(Validators.timestampEnricher());
 
-        // 2. Create new order (No ID assigned yet)
-        Order order = new Order();
-        order.setCustomerName("Sara Raisi");
-        order.setAmount(150.50);
+        // 4. Build the Composed Validator (No if-chain!)
+        PaymentValidator composedValidator = Validators.positiveAmount()
+                .and(Validators.maxLimit(10000.0))
+                .and(Validators.currencyCheck("USD", "EUR", "GBP"));
 
-        // 3. Place order (Repository generates ID = 1 automatically)
-        Order placed = service.placeOrder(order);
-        System.out.println("   Order placed successfully!");
-        System.out.println("   Order ID: " + placed.getId());
-        System.out.println("   Customer: " + placed.getCustomerName());
+        // 5. Wire Service
+        OrderService service = new OrderService(
+                repository,
+                paymentGateway,
+                composedValidator, // Single composed rule
+                enricher
+        );
 
-        // 4. Retrieve by ID
-        Order found = service.findOrder(1L);
-        System.out.println("\n Order retrieved:");
-        System.out.println("   Amount: $" + found.getAmount());
+        // --- Test 1: Valid Order (should pass) ---
+        Order validOrder = new Order();
+        validOrder.setCustomerName("Alice");
+        validOrder.setAmount(500.0);
+        validOrder.setCurrency("USD"); // Valid currency
 
-        // 5. Check total count
-        System.out.println("\n Total orders in system: " + service.getTotalOrders());
+        Order placed = service.placeOrder(validOrder);
+        System.out.println("Valid order placed. ID: " + placed.getId());
+
+        // --- Test 2: Invalid Amount (Negative) ---
+        try {
+            Order invalidOrder = new Order();
+            invalidOrder.setCustomerName("Bob");
+            invalidOrder.setAmount(-10.0);
+            invalidOrder.setCurrency("USD");
+            service.placeOrder(invalidOrder);
+        } catch (RuntimeException e) {
+            System.out.println("Caught expected exception: " + e.getMessage());
+        }
+
+        // --- Test 3: Invalid Currency ---
+        try {
+            Order invalidCurrencyOrder = new Order();
+            invalidCurrencyOrder.setCustomerName("Charlie");
+            invalidCurrencyOrder.setAmount(100.0);
+            invalidCurrencyOrder.setCurrency("JPY"); // Not allowed
+            service.placeOrder(invalidCurrencyOrder);
+        } catch (RuntimeException e) {
+            System.out.println("Caught expected exception: " + e.getMessage());
+        }
     }
 }
