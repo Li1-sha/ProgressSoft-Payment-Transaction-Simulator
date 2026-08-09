@@ -26,9 +26,9 @@ public class CalculatorTest {
             "0, -5, -5",
             "0, 0, 0"
     })
-    void testAdd() {
-        int result = calc.add(2, 3);
-        assertEquals(5, result);
+    void testAdd(int a, int b, int expected) {
+        int result = calc.add(a, b);
+        assertEquals(expected, result);
     }
 
     @ParameterizedTest
@@ -41,9 +41,9 @@ public class CalculatorTest {
             "0, 5, -5",
             "0, 0, 0"
     })
-    void testSubtract() {
-        int result = calc.subtract(10, 4);
-        assertEquals(6, result);
+    void testSubtract(int a, int b, int expected) {
+        int result = calc.subtract(a, b);
+        assertEquals(expected, result);
     }
 
     @Test
