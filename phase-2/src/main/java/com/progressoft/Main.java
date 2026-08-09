@@ -17,17 +17,17 @@ public class Main {
 
         // 2. Setup Payment Gateway (Dummy)
         PaymentGateway paymentGateway = order ->
-                System.out.println("💰 Charging $" + order.getAmount() +
+                System.out.println("Charging " + order.getAmount() +
                         " in " + order.getCurrency());
 
         // 3. Build Composers (OrderEnricher composition)
-        OrderEnricher enricher = Validators.defaultCurrency("USD")
+        OrderEnricher enricher = Validators.defaultCurrency("OMR")
                 .andThen(Validators.timestampEnricher());
 
         // 4. Build the Composed Validator (No if-chain!)
         PaymentValidator composedValidator = Validators.positiveAmount()
                 .and(Validators.maxLimit(10000.0))
-                .and(Validators.currencyCheck("USD", "EUR", "GBP"));
+                .and(Validators.currencyCheck("OMR", "EUR", "USD"));
 
         // 5. Wire Service
         OrderService service = new OrderService(
@@ -37,30 +37,30 @@ public class Main {
                 enricher
         );
 
-        // --- Test 1: Valid Order (should pass) ---
+        // Test 1: Valid Order (should pass) ---
         Order validOrder = new Order();
-        validOrder.setCustomerName("Alice");
+        validOrder.setCustomerName("Ahmed");
         validOrder.setAmount(500.0);
-        validOrder.setCurrency("USD"); // Valid currency
+        validOrder.setCurrency("OMR"); // Valid currency
 
         Order placed = service.placeOrder(validOrder);
         System.out.println("Valid order placed. ID: " + placed.getId());
 
-        // --- Test 2: Invalid Amount (Negative) ---
+        // Test 2: Invalid Amount (Negative) ---
         try {
             Order invalidOrder = new Order();
-            invalidOrder.setCustomerName("Bob");
+            invalidOrder.setCustomerName("Ali");
             invalidOrder.setAmount(-10.0);
-            invalidOrder.setCurrency("USD");
+            invalidOrder.setCurrency("OMR");
             service.placeOrder(invalidOrder);
         } catch (RuntimeException e) {
             System.out.println("Caught expected exception: " + e.getMessage());
         }
 
-        // --- Test 3: Invalid Currency ---
+        // Test 3: Invalid Currency ---
         try {
             Order invalidCurrencyOrder = new Order();
-            invalidCurrencyOrder.setCustomerName("Charlie");
+            invalidCurrencyOrder.setCustomerName("Sara");
             invalidCurrencyOrder.setAmount(100.0);
             invalidCurrencyOrder.setCurrency("JPY"); // Not allowed
             service.placeOrder(invalidCurrencyOrder);
