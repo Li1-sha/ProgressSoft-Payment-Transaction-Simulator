@@ -3,33 +3,41 @@ package com.progressoft.service;
 import com.progressoft.domain.Order;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
+import com.progressoft.validation.OrderEnricher;
+import com.progressoft.validation.PaymentValidator;
 
 public class OrderService {
 
     private final OrderRepository orderRepository;
     private final PaymentGateway paymentGateway;
+    private final PaymentValidator paymentValidator;
+    private final OrderEnricher orderEnricher;
 
     public OrderService(OrderRepository orderRepository,
-                        PaymentGateway paymentGateway) {
+                        PaymentGateway paymentGateway, PaymentValidator paymentValidator, OrderEnricher orderEnricher) {
         this.orderRepository = orderRepository;
         this.paymentGateway = paymentGateway;
+        this.paymentValidator = paymentValidator;
+        this.orderEnricher = orderEnricher;
     }
 
     public Order placeOrder(Order order) {
-        // 1. Business logic
-        paymentGateway.charge(order);
+        // 1. Enrich the order (apply default currency, timestamp, etc.)
+        Order enrichedOrder = orderEnricher.enrich(order);
 
-        // abstraction not implementation
-        return orderRepository.save(order);
+        // 2. Validate the order (composed of 3 rules, but looks like one call!)
+        paymentValidator.validate(enrichedOrder);
+
+        // 3. Business logic: Charge payment
+        paymentGateway.charge(enrichedOrder);
+
+        // 4. Persist the order
+        return orderRepository.save(enrichedOrder);
     }
 
     public Order findOrder(Long id) {
         return orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order with ID " + id + " not found"));
-    }
-
-    public boolean isOrderExist(Long id) {
-        return orderRepository.existsById(id);
     }
 
     public long getTotalOrders() {
