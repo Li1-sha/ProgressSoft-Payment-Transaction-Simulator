@@ -6,6 +6,7 @@ public class Order implements Identifiable<Long> {
     private Long id;
     private String customerName;
     private double amount;
+    private String currency;
 
     @Override
     public Long getId() {
@@ -31,5 +32,13 @@ public class Order implements Identifiable<Long> {
 
     public void setAmount(double amount) {
         this.amount = amount;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
 }
