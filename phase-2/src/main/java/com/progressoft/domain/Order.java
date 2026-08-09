@@ -7,7 +7,6 @@ public class Order implements Identifiable<Long> {
     private String customerName;
     private double amount;
 
-    // --- Identifiable Contract ---
     @Override
     public Long getId() {
         return id;
@@ -18,7 +17,6 @@ public class Order implements Identifiable<Long> {
         this.id = id;
     }
 
-    // --- Regular Getters and Setters ---
     public String getCustomerName() {
         return customerName;
     }
