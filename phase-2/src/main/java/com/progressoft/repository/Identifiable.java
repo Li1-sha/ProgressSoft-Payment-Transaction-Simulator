@@ -1,4 +1,6 @@
 package com.progressoft.repository;
 
-public class Identifiable {
+public interface Identifiable<ID> {
+    ID getId();
+    void setId(ID id);
 }
