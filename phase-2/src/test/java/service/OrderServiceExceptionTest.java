@@ -51,7 +51,7 @@ public class OrderServiceExceptionTest {
         InsufficientFundsException ex =
                 assertThrows(InsufficientFundsException.class, () -> service.placeOrder(order));
 
-        assertEquals(50.0, ex.getRequiredAmount()); // Now passes ✅
+        assertEquals(50.0, ex.getRequiredAmount());
         assertEquals(20.0, ex.getAvailableAmount());
     }
 
