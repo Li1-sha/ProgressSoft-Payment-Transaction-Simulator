@@ -1,4 +1,4 @@
-package com.progressoft.service;
+package service;
 
 import com.progressoft.domain.Order;
 import com.progressoft.exception.GatewayTimeoutException;
@@ -7,6 +7,7 @@ import com.progressoft.exception.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.inmemory.InMemoryOrderRepository;
+import com.progressoft.service.OrderService;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 import com.progressoft.validation.Validators;

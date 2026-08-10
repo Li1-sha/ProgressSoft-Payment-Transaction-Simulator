@@ -1,5 +1,8 @@
-package com.progressoft.exception;
+package exception;
 
+import com.progressoft.exception.GatewayTimeoutException;
+import com.progressoft.exception.InsufficientFundsException;
+import com.progressoft.exception.ValidationFailedException;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
