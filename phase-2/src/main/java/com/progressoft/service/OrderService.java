@@ -9,8 +9,12 @@ import com.progressoft.repository.OrderRepository;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.DoubleAdder;
 import java.util.stream.Collectors;
 
 public class OrderService {
@@ -19,26 +23,34 @@ public class OrderService {
     private final PaymentGateway paymentGateway;
     private final PaymentValidator paymentValidator;
     private final OrderEnricher orderEnricher;
+    private final ExecutorService executor;
 
+    // Constructor with custom pool size
     public OrderService(OrderRepository orderRepository,
-                        PaymentGateway paymentGateway, PaymentValidator paymentValidator, OrderEnricher orderEnricher) {
+                        PaymentGateway paymentGateway,
+                        PaymentValidator paymentValidator,
+                        OrderEnricher orderEnricher,
+                        int poolSize) {
         this.orderRepository = orderRepository;
         this.paymentGateway = paymentGateway;
         this.paymentValidator = paymentValidator;
         this.orderEnricher = orderEnricher;
+        this.executor = Executors.newFixedThreadPool(poolSize);
+    }
+
+    // Original constructor – delegates to the above with default pool size
+    public OrderService(OrderRepository orderRepository,
+                        PaymentGateway paymentGateway,
+                        PaymentValidator paymentValidator,
+                        OrderEnricher orderEnricher) {
+        this(orderRepository, paymentGateway, paymentValidator, orderEnricher,
+                Runtime.getRuntime().availableProcessors());
     }
 
     public Order placeOrder(Order order) throws ValidationFailedException, InsufficientFundsException, GatewayTimeoutException {
-        // 1. Enrich the order (apply default currency, timestamp, etc.)
         Order enrichedOrder = orderEnricher.enrich(order);
-
-        // 2. Validate the order (composed of 3 rules, but looks like one call!)
         paymentValidator.validate(enrichedOrder);
-
-        // 3. Business logic: Charge payment
         paymentGateway.charge(enrichedOrder);
-
-        // 4. Persist the order
         return orderRepository.save(enrichedOrder);
     }
 
@@ -51,6 +63,87 @@ public class OrderService {
         return orderRepository.findAll();
     }
 
+    // Stream Pipeline
+    public ProcessingResult processBatchWithStreams(List<Order> orders) {
+        List<ProcessingResult.ProcessedOrder> processed = orders.stream()
+                .map(orderEnricher::enrich)
+                .map(order -> {
+                    try {
+                        paymentValidator.validate(order);
+                        return new ProcessingResult.ProcessedOrder(order, null);
+                    } catch (Exception e) {
+                        return new ProcessingResult.ProcessedOrder(order, e.getMessage());
+                    }
+                })
+                .collect(Collectors.toList());
+
+        Map<Boolean, List<ProcessingResult.ProcessedOrder>> partitioned =
+                processed.stream()
+                        .collect(Collectors.partitioningBy(ProcessingResult.ProcessedOrder::isApproved));
+
+        Map<String, Double> totalsByCurrency = partitioned.get(true).stream()
+                .map(ProcessingResult.ProcessedOrder::getOrder)
+                .collect(Collectors.groupingBy(
+                        Order::getCurrency,
+                        Collectors.summingDouble(Order::getAmount)
+                ));
+
+        return new ProcessingResult(partitioned, totalsByCurrency);
+    }
+
+    // Concurrent Processing
+    public ProcessingResult processBatchConcurrently(List<Order> orders)
+            throws InterruptedException, ExecutionException {
+
+        AtomicLong processedCount = new AtomicLong(0);
+        ConcurrentHashMap<String, DoubleAdder> currencyTotals = new ConcurrentHashMap<>();
+
+        List<CompletableFuture<ProcessingResult.ProcessedOrder>> futures = orders.stream()
+                .map(order -> CompletableFuture.supplyAsync(() -> {
+                    Order enriched = orderEnricher.enrich(order);
+                    try {
+                        paymentValidator.validate(enriched);
+                        processedCount.incrementAndGet();
+                        currencyTotals.computeIfAbsent(enriched.getCurrency(),
+                                        k -> new DoubleAdder())
+                                .add(enriched.getAmount());
+                        return new ProcessingResult.ProcessedOrder(enriched, null);
+                    } catch (Exception e) {
+                        return new ProcessingResult.ProcessedOrder(enriched, e.getMessage());
+                    }
+                }, executor))
+                .collect(Collectors.toList());
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get();
+
+        List<ProcessingResult.ProcessedOrder> results = futures.stream()
+                .map(CompletableFuture::join)
+                .collect(Collectors.toList());
+
+        Map<Boolean, List<ProcessingResult.ProcessedOrder>> partitioned =
+                results.stream()
+                        .collect(Collectors.partitioningBy(ProcessingResult.ProcessedOrder::isApproved));
+
+        Map<String, Double> totals = new HashMap<>();
+        currencyTotals.forEach((currency, adder) -> totals.put(currency, adder.sum()));
+
+        return new ProcessingResult(partitioned, totals);
+    }
+
+    // Shutdown
+    public void shutdownExecutor() {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    // Result
     public static class ProcessingResult {
         private final Map<Boolean, List<ProcessedOrder>> partitioned;
         private final Map<String, Double> totalsByCurrency;
@@ -71,7 +164,7 @@ public class OrderService {
 
         public static class ProcessedOrder {
             private final Order order;
-            private final String rejectionReason; // null means approved
+            private final String rejectionReason;
 
             public ProcessedOrder(Order order, String rejectionReason) {
                 this.order = order;
@@ -89,37 +182,6 @@ public class OrderService {
             public boolean isApproved() {
                 return rejectionReason == null;
             }
-
         }
-    }
-
-    public ProcessingResult processBatchWithStreams(List<Order> orders) {
-        // 1. Enrich and validate, capturing any rejection reason
-        List<ProcessingResult.ProcessedOrder> processed = orders.stream()
-                .map(orderEnricher::enrich)                 // apply default currency & timestamp
-                .map(order -> {
-                    try {
-                        paymentValidator.validate(order);
-                        return new ProcessingResult.ProcessedOrder(order, null);
-                    } catch (Exception e) {                 // catches ValidationFailedException or PaymentValidationException
-                        return new ProcessingResult.ProcessedOrder(order, e.getMessage());
-                    }
-                })
-                .collect(Collectors.toList());              // intermediate list to reuse
-
-        // 2. Partition into approved / rejected – preserves the reason
-        Map<Boolean, List<ProcessingResult.ProcessedOrder>> partitioned =
-                processed.stream()
-                        .collect(Collectors.partitioningBy(ProcessingResult.ProcessedOrder::isApproved));
-
-        // 3. Group approved orders by currency and sum amounts (using summingDouble)
-        Map<String, Double> totalsByCurrency = partitioned.get(true).stream()
-                .map(ProcessingResult.ProcessedOrder::getOrder)
-                .collect(Collectors.groupingBy(
-                        Order::getCurrency,
-                        Collectors.summingDouble(Order::getAmount)
-                ));
-
-        return new ProcessingResult(partitioned, totalsByCurrency);
     }
 }
