@@ -165,7 +165,11 @@ public class Main {
         } catch (NumberFormatException e) {
             System.out.println("    Invalid ID. Please enter a number.");
         } catch (RuntimeException e) {
-            System.out.println("    " + e.getMessage());
+            if (e.getMessage().contains("not found")) {
+                System.out.println("    " + e.getMessage());
+            } else {
+                throw e;
+            }
         }
     }
 

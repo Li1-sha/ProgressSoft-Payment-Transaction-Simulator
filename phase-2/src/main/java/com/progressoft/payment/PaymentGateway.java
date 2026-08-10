@@ -5,5 +5,5 @@ import com.progressoft.exception.GatewayTimeoutException;
 import com.progressoft.exception.InsufficientFundsException;
 
 public interface PaymentGateway {
-    void charge(Order order) throws InsufficientFundsException, GatewayTimeoutException;;
+    void charge(Order order) throws InsufficientFundsException, GatewayTimeoutException;
 }
