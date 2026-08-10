@@ -14,7 +14,7 @@ import com.progressoft.validation.Validators;
 
 public class Main {
 
-    public static void main(String[] args) throws ValidationFailedException, InsufficientFundsException, GatewayTimeoutException {
+    public static void main(String[] args) {
         // 1. Setup Repository
         OrderRepository repository = new InMemoryOrderRepository();
 
@@ -27,7 +27,7 @@ public class Main {
         OrderEnricher enricher = Validators.defaultCurrency("OMR")
                 .andThen(Validators.timestampEnricher());
 
-        // 4. Build the Composed Validator (No if-chain!)
+        // 4. Build the Composed Validator
         PaymentValidator composedValidator = Validators.positiveAmount()
                 .and(Validators.maxLimit(10000.0))
                 .and(Validators.currencyCheck("OMR", "EUR", "USD"));
@@ -36,39 +36,49 @@ public class Main {
         OrderService service = new OrderService(
                 repository,
                 paymentGateway,
-                composedValidator, // Single composed rule
+                composedValidator,
                 enricher
         );
 
-        // Test 1: Valid Order (should pass) ---
-        Order validOrder = new Order();
-        validOrder.setCustomerName("Ahmed");
-        validOrder.setAmount(500.0);
-        validOrder.setCurrency("OMR"); // Valid currency
+        // --- Test 1: Valid Order ---
+        try {
+            Order validOrder = new Order();
+            validOrder.setCustomerName("Ahmed");
+            validOrder.setAmount(500.0);
+            validOrder.setCurrency("OMR");
 
-        Order placed = service.placeOrder(validOrder);
-        System.out.println("Valid order placed. ID: " + placed.getId());
+            Order placed = service.placeOrder(validOrder);
+            System.out.println(" Valid order placed. ID: " + placed.getId());
+        } catch (ValidationFailedException | InsufficientFundsException | GatewayTimeoutException e) {
+            System.out.println(" Test 1 failed unexpectedly: " + e.getMessage());
+        }
 
-        // Test 2: Invalid Amount (Negative) ---
+        // --- Test 2: Invalid Amount (Negative) ---
         try {
             Order invalidOrder = new Order();
             invalidOrder.setCustomerName("Ali");
             invalidOrder.setAmount(-10.0);
             invalidOrder.setCurrency("OMR");
             service.placeOrder(invalidOrder);
-        } catch (RuntimeException e) {
-            System.out.println("Caught expected exception: " + e.getMessage());
+        } catch (ValidationFailedException e) {
+            System.out.println(" Caught expected ValidationFailedException: " + e.getMessage());
+            System.out.println("   Field: " + e.getFieldName() + " | Rejected: " + e.getRejectedValue());
+        } catch (InsufficientFundsException | GatewayTimeoutException e) {
+            System.out.println(" Unexpected payment exception: " + e.getMessage());
         }
 
-        // Test 3: Invalid Currency ---
+        // --- Test 3: Invalid Currency ---
         try {
             Order invalidCurrencyOrder = new Order();
             invalidCurrencyOrder.setCustomerName("Sara");
             invalidCurrencyOrder.setAmount(100.0);
             invalidCurrencyOrder.setCurrency("JPY"); // Not allowed
             service.placeOrder(invalidCurrencyOrder);
-        } catch (RuntimeException e) {
-            System.out.println("Caught expected exception: " + e.getMessage());
+        } catch (ValidationFailedException e) {
+            System.out.println(" Caught expected ValidationFailedException: " + e.getMessage());
+            System.out.println("   Field: " + e.getFieldName() + " | Rejected: " + e.getRejectedValue());
+        } catch (InsufficientFundsException | GatewayTimeoutException e) {
+            System.out.println(" Unexpected payment exception: " + e.getMessage());
         }
     }
 }
