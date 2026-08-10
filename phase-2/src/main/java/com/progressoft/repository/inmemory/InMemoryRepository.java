@@ -43,6 +43,11 @@ public class InMemoryRepository<T extends Identifiable<ID>, ID>
     }
 
     @Override
+    public void deleteAll(Collection<? extends ID> ids) {
+        ids.forEach(storage::remove);
+    }
+
+    @Override
     public boolean existsById(ID id) {
         return storage.containsKey(id);
     }
