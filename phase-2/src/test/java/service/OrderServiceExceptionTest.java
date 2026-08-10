@@ -19,9 +19,9 @@ public class OrderServiceExceptionTest {
     private final OrderRepository repository = new InMemoryOrderRepository();
     private final PaymentValidator validator = Validators.positiveAmount()
             .and(Validators.maxLimit(1000))
-            .and(Validators.currencyCheck("USD"));
+            .and(Validators.currencyCheck("OMR"));
 
-    private final OrderEnricher enricher = Validators.defaultCurrency("USD");
+    private final OrderEnricher enricher = Validators.defaultCurrency("OMR");
 
     @Test
     void placeOrder_throwsValidationFailed_whenAmountNegative() {
@@ -29,9 +29,9 @@ public class OrderServiceExceptionTest {
         OrderService service = new OrderService(repository, gateway, validator, enricher);
 
         Order order = new Order();
-        order.setCustomerName("John");
+        order.setCustomerName("Ali");
         order.setAmount(-10.0);
-        order.setCurrency("USD");
+        order.setCurrency("OMR");
 
         assertThrows(ValidationFailedException.class, () -> service.placeOrder(order));
     }
@@ -44,9 +44,9 @@ public class OrderServiceExceptionTest {
         OrderService service = new OrderService(repository, failingGateway, validator, enricher);
 
         Order order = new Order();
-        order.setCustomerName("Jane");
+        order.setCustomerName("Ahmed");
         order.setAmount(50.0);
-        order.setCurrency("USD");
+        order.setCurrency("OMR");
 
         InsufficientFundsException ex =
                 assertThrows(InsufficientFundsException.class, () -> service.placeOrder(order));
@@ -63,9 +63,9 @@ public class OrderServiceExceptionTest {
         OrderService service = new OrderService(repository, timeoutGateway, validator, enricher);
 
         Order order = new Order();
-        order.setCustomerName("Bob");
+        order.setCustomerName("Sara");
         order.setAmount(200.0);
-        order.setCurrency("USD");
+        order.setCurrency("OMR");
 
         GatewayTimeoutException ex =
                 assertThrows(GatewayTimeoutException.class, () -> service.placeOrder(order));
