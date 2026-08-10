@@ -26,13 +26,13 @@ The heart of the system is `OrderService.placeOrder()`. When an order arrives:
 
 3. **Payment Processing (`PaymentGateway`)**
     - Attempts to charge the order.
-    - Throws `InsufficientFundsException` or `GatewayTimeoutException` on failure.
+    - Throws `InsufficientFundsException` on failure.
 
 4. **Persistence (`Repository`)**
     - Saves the order to an in‑memory `ConcurrentHashMap` with an auto‑generated ID.
 
-All exceptions are **checked**, so the calling code (the `Main` menu or a controller) **must** explicitly handle or re‑declare them.
-
+- Checked exceptions (`ValidationFailedException`, `InsufficientFundsException`) force callers to handle recoverable, business‑critical errors.
+- Unchecked exception (`GatewayTimeoutException`) allows callers that don't care about transient network issues to let it propagate, while retry wrappers can catch it easily without polluting intermediate layers.
 ---
 
 ## Component Breakdown

@@ -66,14 +66,14 @@ public class Main {
             String choice = scanner.nextLine().trim();
 
             switch (choice) {
-                case "1" -> placeNewOrder(scanner, service);
-                case "2" -> findOrderById(scanner, service);
-                case "3" -> showAllOrders(service);
-                case "4" -> {
+                case "1": placeNewOrder(scanner, service);
+                case "2" : findOrderById(scanner, service);
+                case "3" : showAllOrders(service);
+                case "4" : {
                     running = false;
                     System.out.println("\n Exiting. Goodbye!");
                 }
-                default -> System.out.println("Invalid option. Please enter 1, 2, 3, or 4.");
+                default : System.out.println("Invalid option. Please enter 1, 2, 3, or 4.");
             }
             System.out.println();
         }
@@ -166,7 +166,11 @@ public class Main {
         } catch (NumberFormatException e) {
             System.out.println("    Invalid ID. Please enter a number.");
         } catch (RuntimeException e) {
-            System.out.println("    " + e.getMessage());
+            if (e.getMessage().contains("not found")) {
+                System.out.println("    " + e.getMessage());
+            } else {
+                throw e;
+            }
         }
     }
 

@@ -3,6 +3,7 @@ package com.progressoft.service;
 import com.progressoft.domain.Order;
 import com.progressoft.exception.GatewayTimeoutException;
 import com.progressoft.exception.InsufficientFundsException;
+import com.progressoft.exception.OrderNotFoundException;
 import com.progressoft.exception.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
@@ -47,6 +48,8 @@ public class OrderService {
                 Runtime.getRuntime().availableProcessors());
     }
 
+    public Order placeOrder(Order order) throws ValidationFailedException, InsufficientFundsException {
+        // 1. Enrich the order (apply default currency, timestamp, etc.)
     public Order placeOrder(Order order) throws ValidationFailedException, InsufficientFundsException, GatewayTimeoutException {
         Order enrichedOrder = orderEnricher.enrich(order);
         paymentValidator.validate(enrichedOrder);
@@ -56,7 +59,7 @@ public class OrderService {
 
     public Order findOrder(Long id) {
         return orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order with ID " + id + " not found"));
+                .orElseThrow(() -> new OrderNotFoundException(id));
     }
 
     public List<Order> getAllOrders() {
