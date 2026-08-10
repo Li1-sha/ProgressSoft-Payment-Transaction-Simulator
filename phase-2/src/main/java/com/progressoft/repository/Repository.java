@@ -1,5 +1,6 @@
 package com.progressoft.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -8,6 +9,7 @@ public interface Repository<T extends Identifiable<ID>, ID> {
     Optional<T> findById(ID id);
     List<T> findAll();
     void deleteById(ID id);
+    void deleteAll(Collection<? extends ID> ids);
     boolean existsById(ID id);
     long count();
 }
