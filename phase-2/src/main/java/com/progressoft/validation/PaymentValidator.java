@@ -1,13 +1,12 @@
 package com.progressoft.validation;
 
 import com.progressoft.domain.Order;
-import com.progressoft.exception.PaymentValidationException;
 import com.progressoft.exception.ValidationFailedException;
 
 @FunctionalInterface
 public interface PaymentValidator {
 
-    void validate(Order order) throws PaymentValidationException, ValidationFailedException;
+    void validate(Order order) throws ValidationFailedException;
 
     /**
      * Composes two validators into one.
@@ -18,7 +17,7 @@ public interface PaymentValidator {
      */
     default PaymentValidator and(PaymentValidator other) {
         return order -> {
-            this.validate(order); // breaks if this throws
+            this.validate(order);
             other.validate(order);
         };
     }
