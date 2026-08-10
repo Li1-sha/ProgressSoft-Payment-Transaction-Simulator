@@ -1,7 +1,6 @@
 package com.progressoft.exception;
 
 public abstract class PaymentException extends Exception {
-
     private final String errorCode;
 
     public PaymentException(String message, String errorCode) {
