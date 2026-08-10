@@ -39,7 +39,7 @@ public class OrderServiceExceptionTest {
     @Test
     void placeOrder_throwsInsufficientFunds_whenGatewayFailsWithThat() throws Exception {
         PaymentGateway failingGateway = order -> {
-            throw new InsufficientFundsException(100.0, 20.0);
+            throw new InsufficientFundsException(order.getAmount(), 20.0);
         };
         OrderService service = new OrderService(repository, failingGateway, validator, enricher);
 
@@ -50,7 +50,8 @@ public class OrderServiceExceptionTest {
 
         InsufficientFundsException ex =
                 assertThrows(InsufficientFundsException.class, () -> service.placeOrder(order));
-        assertEquals(50.0, ex.getRequiredAmount()); // The required amount from the order
+
+        assertEquals(50.0, ex.getRequiredAmount()); // Now passes ✅
         assertEquals(20.0, ex.getAvailableAmount());
     }
 
