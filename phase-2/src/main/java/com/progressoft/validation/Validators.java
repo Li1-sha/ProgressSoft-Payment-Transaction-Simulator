@@ -1,6 +1,5 @@
 package com.progressoft.validation;
 
-import com.progressoft.domain.Order;
 import com.progressoft.exception.ValidationFailedException;
 
 public final class Validators {
