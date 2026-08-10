@@ -27,7 +27,7 @@ public class OrderService {
         this.orderEnricher = orderEnricher;
     }
 
-    public Order placeOrder(Order order) throws ValidationFailedException, InsufficientFundsException, GatewayTimeoutException {
+    public Order placeOrder(Order order) throws ValidationFailedException, InsufficientFundsException {
         // 1. Enrich the order (apply default currency, timestamp, etc.)
         Order enrichedOrder = orderEnricher.enrich(order);
 
