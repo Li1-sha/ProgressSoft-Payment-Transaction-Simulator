@@ -1,6 +1,9 @@
 package com.progressoft;
 
 import com.progressoft.domain.Order;
+import com.progressoft.exception.GatewayTimeoutException;
+import com.progressoft.exception.InsufficientFundsException;
+import com.progressoft.exception.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.inmemory.InMemoryOrderRepository;
@@ -11,7 +14,7 @@ import com.progressoft.validation.Validators;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ValidationFailedException, InsufficientFundsException, GatewayTimeoutException {
         // 1. Setup Repository
         OrderRepository repository = new InMemoryOrderRepository();
 
