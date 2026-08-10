@@ -3,6 +3,7 @@ package com.progressoft.service;
 import com.progressoft.domain.Order;
 import com.progressoft.exception.GatewayTimeoutException;
 import com.progressoft.exception.InsufficientFundsException;
+import com.progressoft.exception.OrderNotFoundException;
 import com.progressoft.exception.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
@@ -42,7 +43,7 @@ public class OrderService {
 
     public Order findOrder(Long id) {
         return orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order with ID " + id + " not found"));
+                .orElseThrow(() -> new OrderNotFoundException(id));
     }
 
     public List<Order> getAllOrders() {
