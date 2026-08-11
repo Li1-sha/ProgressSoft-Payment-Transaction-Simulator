@@ -1,6 +1,6 @@
 package com.progressoft.validation;
 
-import com.progressoft.exception.ValidationFailedException;
+import com.progressoft.exceptions.ValidationFailedException;
 
 public final class Validators {
 

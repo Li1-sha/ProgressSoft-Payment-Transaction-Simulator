@@ -1,15 +1,16 @@
 package com.progressoft.service;
 
 import com.progressoft.domain.Order;
-import com.progressoft.exception.GatewayTimeoutException;
-import com.progressoft.exception.InsufficientFundsException;
-import com.progressoft.exception.OrderNotFoundException;
-import com.progressoft.exception.ValidationFailedException;
+import com.progressoft.exceptions.GatewayTimeoutException;
+import com.progressoft.exceptions.InsufficientFundsException;
+import com.progressoft.exceptions.OrderNotFoundException;
+import com.progressoft.exceptions.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 
+import javax.sql.DataSource;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,27 +26,31 @@ public class OrderService {
     private final PaymentValidator paymentValidator;
     private final OrderEnricher orderEnricher;
     private final ExecutorService executor;
+    private final DataSource dataSource;
 
     // Constructor with custom pool size
     public OrderService(OrderRepository orderRepository,
                         PaymentGateway paymentGateway,
                         PaymentValidator paymentValidator,
                         OrderEnricher orderEnricher,
-                        int poolSize) {
+                        int poolSize,
+                        DataSource dataSource) {
         this.orderRepository = orderRepository;
         this.paymentGateway = paymentGateway;
         this.paymentValidator = paymentValidator;
         this.orderEnricher = orderEnricher;
         this.executor = Executors.newFixedThreadPool(poolSize);
+        this.dataSource = dataSource;
     }
 
     // Original constructor – delegates to the above with default pool size
     public OrderService(OrderRepository orderRepository,
                         PaymentGateway paymentGateway,
                         PaymentValidator paymentValidator,
-                        OrderEnricher orderEnricher) {
+                        OrderEnricher orderEnricher,
+                        DataSource dataSource) {
         this(orderRepository, paymentGateway, paymentValidator, orderEnricher,
-                Runtime.getRuntime().availableProcessors());
+                Runtime.getRuntime().availableProcessors(), dataSource);
     }
 
     public Order placeOrder(Order order) throws ValidationFailedException, InsufficientFundsException {

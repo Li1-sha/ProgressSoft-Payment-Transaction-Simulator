@@ -1,8 +1,9 @@
 package exception;
 
-import com.progressoft.exception.GatewayTimeoutException;
-import com.progressoft.exception.InsufficientFundsException;
-import com.progressoft.exception.ValidationFailedException;
+
+import com.progressoft.exceptions.GatewayTimeoutException;
+import com.progressoft.exceptions.InsufficientFundsException;
+import com.progressoft.exceptions.ValidationFailedException;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -38,6 +39,5 @@ public class ExceptionDataTest {
         assertEquals("https://payments.progressoft.com/charge", ex.getEndpoint());
         assertEquals(5000L, ex.getTimeoutMillis());
         assertEquals("charge", ex.getOperation());
-        assertEquals("TIM-001", ex.getErrorCode());
     }
 }

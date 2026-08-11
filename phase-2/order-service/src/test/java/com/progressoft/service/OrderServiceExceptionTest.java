@@ -1,11 +1,12 @@
 package com.progressoft.service;
 
 import com.progressoft.domain.Order;
-import com.progressoft.exception.GatewayTimeoutException;
-import com.progressoft.exception.InsufficientFundsException;
-import com.progressoft.exception.ValidationFailedException;
+import com.progressoft.exceptions.GatewayTimeoutException;
+import com.progressoft.exceptions.InsufficientFundsException;
+import com.progressoft.exceptions.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
+import com.progressoft.repository.TestDataSourceFactory;
 import com.progressoft.repository.inmemory.InMemoryOrderRepository;
 import com.progressoft.service.OrderService;
 import com.progressoft.validation.OrderEnricher;
@@ -26,7 +27,13 @@ public class OrderServiceExceptionTest {
     @Test
     void placeOrder_throwsValidationFailed_whenAmountNegative() {
         PaymentGateway gateway = order -> {};
-        OrderService service = new OrderService(repository, gateway, validator, enricher);
+        OrderService service = new OrderService(
+                repository,
+                gateway,
+                validator,
+                enricher,
+                TestDataSourceFactory.createHikariDataSource() // DataSource
+        );
 
         Order order = new Order();
         order.setCustomerName("Ali");
@@ -41,7 +48,13 @@ public class OrderServiceExceptionTest {
         PaymentGateway failingGateway = order -> {
             throw new InsufficientFundsException(order.getAmount(), 20.0);
         };
-        OrderService service = new OrderService(repository, failingGateway, validator, enricher);
+        OrderService service = new OrderService(
+                repository,
+                failingGateway,
+                validator,
+                enricher,
+                TestDataSourceFactory.createHikariDataSource() // DataSource
+        );
 
         Order order = new Order();
         order.setCustomerName("Ahmed");
@@ -60,7 +73,13 @@ public class OrderServiceExceptionTest {
         PaymentGateway timeoutGateway = order -> {
             throw new GatewayTimeoutException("api.payments.com", 3000L, "auth");
         };
-        OrderService service = new OrderService(repository, timeoutGateway, validator, enricher);
+        OrderService service = new OrderService(
+                repository,
+                timeoutGateway,
+                validator,
+                enricher,
+                TestDataSourceFactory.createHikariDataSource() // DataSource
+        );
 
         Order order = new Order();
         order.setCustomerName("Sara");

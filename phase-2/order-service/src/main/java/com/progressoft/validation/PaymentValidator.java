@@ -1,7 +1,7 @@
 package com.progressoft.validation;
 
 import com.progressoft.domain.Order;
-import com.progressoft.exception.ValidationFailedException;
+import com.progressoft.exceptions.ValidationFailedException;
 
 @FunctionalInterface
 public interface PaymentValidator {

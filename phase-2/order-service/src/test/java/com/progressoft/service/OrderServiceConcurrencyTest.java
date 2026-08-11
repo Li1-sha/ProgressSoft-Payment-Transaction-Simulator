@@ -2,13 +2,14 @@ package com.progressoft.service;
 
 import com.progressoft.domain.Order;
 import com.progressoft.repository.inmemory.InMemoryOrderRepository;
-import com.progressoft.service.OrderService;
+import com.progressoft.repository.TestDataSourceFactory;
 import com.progressoft.validation.Validators;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
+import javax.sql.DataSource;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,13 +22,15 @@ class OrderServiceConcurrencyTest {
     private static final int BATCH_SIZE = 500;
     private static final int POOL_SIZE = 8;
     private static final int REPEAT_COUNT = 20;
-    private static final double DELTA = 1e-9;  // tolerance for double comparisons
+    private static final double DELTA = 1e-9;
 
     private OrderService service;
     private List<Order> testOrders;
 
     @BeforeEach
     void setUp() {
+        DataSource dataSource = TestDataSourceFactory.createHikariDataSource();
+
         service = new OrderService(
                 new InMemoryOrderRepository(),
                 order -> {},
@@ -36,7 +39,8 @@ class OrderServiceConcurrencyTest {
                         .and(Validators.currencyCheck("USD", "EUR", "GBP", "OMR")),
                 Validators.defaultCurrency("OMR")
                         .andThen(Validators.timestampEnricher()),
-                POOL_SIZE
+                POOL_SIZE,
+                dataSource
         );
 
         testOrders = IntStream.range(0, BATCH_SIZE)
@@ -63,18 +67,15 @@ class OrderServiceConcurrencyTest {
         OrderService.ProcessingResult sequential = service.processBatchWithStreams(testOrders);
         OrderService.ProcessingResult concurrent = service.processBatchConcurrently(testOrders);
 
-        // Compare totals with delta
         assertMapsEqual(sequential.getTotalsByCurrency(),
                 concurrent.getTotalsByCurrency(),
                 DELTA);
 
-        // Partition sizes must match
         assertEquals(sequential.getPartitioned().get(true).size(),
                 concurrent.getPartitioned().get(true).size());
         assertEquals(sequential.getPartitioned().get(false).size(),
                 concurrent.getPartitioned().get(false).size());
 
-        // All rejected orders must carry a reason
         concurrent.getPartitioned().get(false)
                 .forEach(p -> assertNotNull(p.getRejectionReason()));
     }
@@ -91,7 +92,6 @@ class OrderServiceConcurrencyTest {
                 conc.getPartitioned().get(false).size());
     }
 
-    // Helper to compare maps with a tolerance
     private static void assertMapsEqual(Map<String, Double> expected,
                                         Map<String, Double> actual,
                                         double delta) {
