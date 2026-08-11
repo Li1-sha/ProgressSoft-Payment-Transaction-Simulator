@@ -7,7 +7,7 @@
 
     <parent>
         <groupId>com.progressoft</groupId>
-        <artifactId>order-platform</artifactId>
+        <artifactId>phase-2</artifactId>
         <version>1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
@@ -32,6 +32,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
                 <configuration>
                     <archive>
                         <manifest>

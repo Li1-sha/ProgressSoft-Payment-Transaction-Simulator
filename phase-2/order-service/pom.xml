@@ -7,7 +7,7 @@
 
     <parent>
         <groupId>com.progressoft</groupId>
-        <artifactId>order-platform</artifactId>
+        <artifactId>phase-2</artifactId>
         <version>1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
@@ -29,7 +29,6 @@
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
         </dependency>
-        <!-- Test -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
