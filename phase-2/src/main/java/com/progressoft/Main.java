@@ -7,11 +7,14 @@ import com.progressoft.exception.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.inmemory.InMemoryOrderRepository;
+import com.progressoft.service.OrderFileImporter;
 import com.progressoft.service.OrderService;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 import com.progressoft.validation.Validators;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Scanner;
 
@@ -21,9 +24,7 @@ public class Main {
         // --- 1. Wire Dependencies ---
         OrderRepository repository = new InMemoryOrderRepository();
 
-        // Dummy PaymentGateway with realistic failure scenarios
         PaymentGateway paymentGateway = order -> {
-            // Simulate different failures based on amount
             if (order.getAmount() > 800) {
                 throw new GatewayTimeoutException("api.payments.com", 3000L, "charge");
             }
@@ -67,13 +68,18 @@ public class Main {
 
             switch (choice) {
                 case "1": placeNewOrder(scanner, service);
-                case "2" : findOrderById(scanner, service);
-                case "3" : showAllOrders(service);
-                case "4" : {
-                    running = false;
+                    break;
+                case "2": findOrderById(scanner, service);
+                    break;
+                case "3": showAllOrders(service);
+                    break;
+                case "4": running = false;
                     System.out.println("\n Exiting. Goodbye!");
-                }
-                default : System.out.println("Invalid option. Please enter 1, 2, 3, or 4.");
+                    break;
+                case "5": importOrdersFromFile(scanner, service);
+                    break;
+                default: System.out.println("Invalid option. Please enter 1, 2, 3, 4, or 5.");
+                    break;
             }
             System.out.println();
         }
@@ -87,13 +93,13 @@ public class Main {
         System.out.println("2. Find order by ID");
         System.out.println("3. Show all orders");
         System.out.println("4. Exit");
+        System.out.println("5. Import orders from CSV file");
         System.out.print("Choose an option: ");
     }
 
     private static void placeNewOrder(Scanner scanner, OrderService service) {
         System.out.println("\n--- Place New Order ---");
 
-        // 1. Customer Name
         System.out.print("Enter customer name: ");
         String name = scanner.nextLine().trim();
         if (name.isEmpty()) {
@@ -101,7 +107,6 @@ public class Main {
             return;
         }
 
-        // 2. Amount (with validation loop)
         double amount = 0;
         boolean validAmount = false;
         while (!validAmount) {
@@ -115,20 +120,17 @@ public class Main {
             }
         }
 
-        // 3. Currency
         System.out.print("Enter currency (e.g., OMR, EUR, USD, GBP) [Press Enter for OMR]: ");
         String currency = scanner.nextLine().trim().toUpperCase();
         if (currency.isEmpty()) {
-            currency = null; // Let enricher set default (OMR)
+            currency = null;
         }
 
-        // 4. Build the order
         Order order = new Order();
         order.setCustomerName(name);
         order.setAmount(amount);
         order.setCurrency(currency);
 
-        // 5. place it (this triggers validators + payment + save)
         try {
             Order placed = service.placeOrder(order);
             System.out.println("    Order placed successfully!");
@@ -186,6 +188,50 @@ public class Main {
             System.out.println("      [ID: " + o.getId() + "] " +
                     o.getCustomerName() + " - " + o.getAmount() +
                     " (" + o.getCurrency() + ")");
+        }
+    }
+
+    private static void importOrdersFromFile(Scanner scanner, OrderService service) {
+        System.out.println("\n--- Import Orders from CSV ---");
+        System.out.print("Enter the CSV file path: ");
+        String filePath = scanner.nextLine().trim();
+
+        if (filePath.isEmpty()) {
+            System.out.println("File path cannot be empty.");
+            return;
+        }
+
+        OrderFileImporter importer = new OrderFileImporter();
+        try {
+            OrderFileImporter.ImportResult result = importer.importOrders(Path.of(filePath));
+
+            System.out.println("    Valid orders: " + result.getValidCount());
+            System.out.println("    Skipped lines: " + result.getSkippedCount());
+
+            if (result.getSkippedCount() > 0) {
+                System.out.println("    --- Skipped lines ---");
+                result.getSkipped().forEach(s ->
+                        System.out.println("      Line: " + s.getLine() + " | Reason: " + s.getReason())
+                );
+            }
+
+            if (result.getValidCount() > 0) {
+                OrderService.ProcessingResult processingResult =
+                        service.processBatchWithStreams(result.getOrders());
+
+                System.out.println("    --- Pipeline results ---");
+                System.out.println("      Approved: " + processingResult.getPartitioned().get(true).size());
+                System.out.println("      Rejected: " + processingResult.getPartitioned().get(false).size());
+                System.out.println("      Totals per currency:");
+                processingResult.getTotalsByCurrency().forEach((currency, total) ->
+                        System.out.println("        " + currency + ": " + total)
+                );
+            } else {
+                System.out.println("    No valid orders to process.");
+            }
+
+        } catch (IOException e) {
+            System.out.println("    Error reading file: " + e.getMessage());
         }
     }
 }
