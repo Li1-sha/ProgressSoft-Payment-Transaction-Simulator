@@ -15,7 +15,7 @@ public class OrderFileImporter {
         List<SkippedLine> skipped = new ArrayList<>();
 
         try (BufferedReader reader = Files.newBufferedReader(filePath)) {
-            String line = reader.readLine(); // Skip header
+            String line;
             while ((line = reader.readLine()) != null) {
                 try {
                     Order order = parseLine(line);
