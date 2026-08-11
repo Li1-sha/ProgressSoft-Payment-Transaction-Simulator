@@ -1,15 +1,17 @@
-package com.progressoft.service;
+package service;
 
 import com.progressoft.domain.Order;
 import com.progressoft.exception.ReconciliationRequiredException;
 import com.progressoft.repository.jdbc.JdbcOrderRepository;
-import com.progressoft.testutil.TestDataSourceFactory;
+import com.progressoft.service.OrderService;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import repository.TestDataSourceFactory;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -23,53 +25,54 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTransactionTest {
 
+    // 🔧 Enable Byte Buddy experimental mode for Java 25
+    @BeforeAll
+    static void enableExperimentalByteBuddy() {
+        System.setProperty("net.bytebuddy.experimental", "true");
+    }
+
     private DataSource realDataSource;
     private JdbcOrderRepository realRepository;
     private JdbcOrderRepository spyRepository;
-
     private OrderService service;
 
     @BeforeEach
     void setUp() throws SQLException {
-        // 1. Real H2 DataSource (for actual DB operations)
         realDataSource = TestDataSourceFactory.createHikariDataSource();
         realRepository = new JdbcOrderRepository(realDataSource);
 
-        // 2. Create table (using real repository)
+        // Create table
         try (Connection conn = realDataSource.getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.execute("CREATE TABLE orders (id BIGINT AUTO_INCREMENT PRIMARY KEY, customer_name VARCHAR(255), amount DECIMAL(19,4), currency VARCHAR(10))");
         }
 
-        // 3. Spy on the repository to intercept saveWithConnection
+        // Spy on the real repository
         spyRepository = spy(realRepository);
 
-        // 4. Build OrderService with the spy repository
         service = new OrderService(
                 spyRepository,
                 order -> {}, // gateway always succeeds
                 order -> {}, // validator always passes
                 order -> order, // no enrichment
-                realDataSource // real DataSource, not failing
+                realDataSource
         );
     }
 
     @Test
     void rollbackOnDbFailureAfterCharge() throws Exception {
-        // Given: an order
         Order order = new Order();
         order.setCustomerName("TestRollback");
         order.setAmount(100);
         order.setCurrency("USD");
 
-        // When: saveWithConnection throws SQLException (simulate DB failure after charge)
+        // Force SQLException on save
         doThrow(new SQLException("Forced DB failure"))
                 .when(spyRepository).saveWithConnection(any(Order.class), any(Connection.class));
 
-        // Then: placeOrder must throw ReconciliationRequiredException
         assertThrows(ReconciliationRequiredException.class, () -> service.placeOrder(order));
 
-        // And: no row should be persisted (rollback happened)
+        // Verify no rows persisted
         assertEquals(0, realRepository.findAll().size());
     }
 }
