@@ -1,6 +1,6 @@
 CREATE TABLE orders (
-                        id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                        customer_name VARCHAR(255) NOT NULL,
-                        amount DECIMAL(19,4) NOT NULL,
-                        currency VARCHAR(10) NOT NULL
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    customer_name VARCHAR(255) NOT NULL,
+    amount DECIMAL(19,4) NOT NULL,
+    currency VARCHAR(10) NOT NULL
 );
