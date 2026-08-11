@@ -53,6 +53,10 @@ public class OrderService {
         this(orderRepository, paymentGateway, paymentValidator, orderEnricher,
                 Runtime.getRuntime().availableProcessors(), dataSource);
     }
+        public Order findOrder (Long id){
+            return orderRepository.findById(id)
+                    .orElseThrow(() -> new OrderNotFoundException(id));
+        }
 
     public Order placeOrder(Order order) throws ValidationFailedException,
             InsufficientFundsException, GatewayTimeoutException,
