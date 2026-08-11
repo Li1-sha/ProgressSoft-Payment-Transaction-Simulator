@@ -5,7 +5,9 @@ import com.progressoft.service.OrderFileImporter;
 import com.progressoft.service.OrderService;
 import com.progressoft.validation.Validators;
 import org.junit.jupiter.api.Test;
+import repository.TestDataSourceFactory;
 
+import javax.sql.DataSource;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -28,6 +30,8 @@ class OrderFileImporterTest {
         assertTrue(result.getSkipped().stream()
                 .anyMatch(s -> s.getReason().contains("Invalid amount")));
 
+        DataSource dataSource = TestDataSourceFactory.createHikariDataSource();
+
         OrderService service = new OrderService(
                 new InMemoryOrderRepository(),
                 order -> {},
@@ -35,7 +39,8 @@ class OrderFileImporterTest {
                         .and(Validators.maxLimit(10000.0))
                         .and(Validators.currencyCheck("USD", "EUR", "GBP", "OMR")),
                 Validators.defaultCurrency("OMR")
-                        .andThen(Validators.timestampEnricher())
+                        .andThen(Validators.timestampEnricher()),
+                dataSource
         );
 
         OrderService.ProcessingResult processingResult =
