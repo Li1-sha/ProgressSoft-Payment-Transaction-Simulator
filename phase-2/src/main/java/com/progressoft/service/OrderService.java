@@ -1,15 +1,17 @@
 package com.progressoft.service;
 
 import com.progressoft.domain.Order;
-import com.progressoft.exception.GatewayTimeoutException;
-import com.progressoft.exception.InsufficientFundsException;
-import com.progressoft.exception.OrderNotFoundException;
-import com.progressoft.exception.ValidationFailedException;
+import com.progressoft.exception.*;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
+import com.progressoft.repository.Repository;
+import com.progressoft.repository.jdbc.JdbcOrderRepository;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,41 +22,64 @@ import java.util.stream.Collectors;
 
 public class OrderService {
 
-    private final OrderRepository orderRepository;
+    private final Repository<Order, Long> orderRepository;
     private final PaymentGateway paymentGateway;
     private final PaymentValidator paymentValidator;
     private final OrderEnricher orderEnricher;
     private final ExecutorService executor;
+    private final DataSource dataSource;
 
     // Constructor with custom pool size
-    public OrderService(OrderRepository orderRepository,
+    public OrderService(Repository<Order, Long> orderRepository,
                         PaymentGateway paymentGateway,
                         PaymentValidator paymentValidator,
                         OrderEnricher orderEnricher,
-                        int poolSize) {
+                        int poolSize,
+                        DataSource dataSource) {
         this.orderRepository = orderRepository;
         this.paymentGateway = paymentGateway;
         this.paymentValidator = paymentValidator;
         this.orderEnricher = orderEnricher;
         this.executor = Executors.newFixedThreadPool(poolSize);
+        this.dataSource = dataSource;
     }
 
-    // Original constructor – delegates to the above with default pool size
-    public OrderService(OrderRepository orderRepository,
+    // Constructor with default pool size
+    public OrderService(Repository<Order, Long> orderRepository,
                         PaymentGateway paymentGateway,
                         PaymentValidator paymentValidator,
-                        OrderEnricher orderEnricher) {
+                        OrderEnricher orderEnricher,
+                        DataSource dataSource) {
         this(orderRepository, paymentGateway, paymentValidator, orderEnricher,
-                Runtime.getRuntime().availableProcessors());
+                Runtime.getRuntime().availableProcessors(), dataSource);
     }
 
-    public Order placeOrder(Order order) throws ValidationFailedException, InsufficientFundsException {
-        // 1. Enrich the order (apply default currency, timestamp, etc.)
-            Order enrichedOrder = orderEnricher.enrich(order);
-            paymentValidator.validate(enrichedOrder);
-            paymentGateway.charge(enrichedOrder);
-            return orderRepository.save(enrichedOrder);
+    public Order placeOrder(Order order) throws ValidationFailedException,
+            InsufficientFundsException, GatewayTimeoutException,
+            ReconciliationRequiredException {
+        // 1. Enrich & validate
+        Order enriched = orderEnricher.enrich(order);
+        paymentValidator.validate(enriched);
 
+        // 2. Charge (may throw)
+        paymentGateway.charge(enriched);
+
+        // 3. Persist with transaction
+        Connection conn = null;
+        try {
+            conn = dataSource.getConnection();
+            conn.setAutoCommit(false);
+            Order saved = ((JdbcOrderRepository) orderRepository).saveWithConnection(enriched, conn);
+            conn.commit();
+            return saved;
+        } catch (SQLException e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ignored) {}
+            throw new ReconciliationRequiredException(
+                    "Order charged but DB write failed", enriched, e
+            );
+        } finally {
+            if (conn != null) try { conn.close(); } catch (SQLException ignored) {}
+        }
     }
         public Order findOrder (Long id){
             return orderRepository.findById(id)
