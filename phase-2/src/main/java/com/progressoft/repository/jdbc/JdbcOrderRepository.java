@@ -2,7 +2,6 @@ package com.progressoft.repository.jdbc;
 
 import com.progressoft.domain.Order;
 import com.progressoft.repository.Repository;
-
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
@@ -31,44 +30,30 @@ public class JdbcOrderRepository implements Repository<Order, Long> {
         String sql = "INSERT INTO orders (customer_name, amount, currency) VALUES (?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
             stmt.setString(1, entity.getCustomerName());
             stmt.setDouble(2, entity.getAmount());
             stmt.setString(3, entity.getCurrency());
-
-            int affected = stmt.executeUpdate();
-            if (affected == 0) {
-                throw new SQLException("Insert failed, no rows affected.");
-            }
-
-            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                if (generatedKeys.next()) {
-                    long id = generatedKeys.getLong(1);
-                    entity.setId(id);
-                    return entity;
-                } else {
-                    throw new SQLException("Insert failed, no ID generated.");
+            stmt.executeUpdate();
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    entity.setId(rs.getLong(1));
                 }
             }
+            return entity;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to insert order", e);
         }
     }
 
     private Order update(Order entity) {
-        String sql = "UPDATE orders SET customer_name = ?, amount = ?, currency = ? WHERE id = ?";
+        String sql = "UPDATE orders SET customer_name=?, amount=?, currency=? WHERE id=?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setString(1, entity.getCustomerName());
             stmt.setDouble(2, entity.getAmount());
             stmt.setString(3, entity.getCurrency());
             stmt.setLong(4, entity.getId());
-
-            int affected = stmt.executeUpdate();
-            if (affected == 0) {
-                throw new RuntimeException("Order with ID " + entity.getId() + " not found for update");
-            }
+            stmt.executeUpdate();
             return entity;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update order", e);
@@ -80,17 +65,15 @@ public class JdbcOrderRepository implements Repository<Order, Long> {
         String sql = "SELECT id, customer_name, amount, currency FROM orders WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setLong(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return Optional.of(mapRow(rs));
-                } else {
-                    return Optional.empty();
                 }
+                return Optional.empty();
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to find order by id", e);
+            throw new RuntimeException("Failed to find order", e);
         }
     }
 
@@ -100,11 +83,8 @@ public class JdbcOrderRepository implements Repository<Order, Long> {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
-
             List<Order> orders = new ArrayList<>();
-            while (rs.next()) {
-                orders.add(mapRow(rs));
-            }
+            while (rs.next()) orders.add(mapRow(rs));
             return orders;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to find all orders", e);
@@ -116,30 +96,22 @@ public class JdbcOrderRepository implements Repository<Order, Long> {
         String sql = "DELETE FROM orders WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setLong(1, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to delete order by id", e);
+            throw new RuntimeException("Failed to delete order", e);
         }
     }
 
     @Override
     public void deleteAll(Collection<? extends Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return;
-        }
-        // Build placeholders: ?, ?, ?, ...
+        if (ids == null || ids.isEmpty()) return;
         String placeholders = String.join(",", ids.stream().map(id -> "?").collect(java.util.stream.Collectors.toList()));
         String sql = "DELETE FROM orders WHERE id IN (" + placeholders + ")";
-
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            int index = 1;
-            for (Long id : ids) {
-                stmt.setLong(index++, id);
-            }
+            int idx = 1;
+            for (Long id : ids) stmt.setLong(idx++, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to delete orders", e);
@@ -151,7 +123,6 @@ public class JdbcOrderRepository implements Repository<Order, Long> {
         String sql = "SELECT 1 FROM orders WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setLong(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next();
@@ -167,12 +138,8 @@ public class JdbcOrderRepository implements Repository<Order, Long> {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
-
-            if (rs.next()) {
-                return rs.getLong(1);
-            } else {
-                return 0;
-            }
+            if (rs.next()) return rs.getLong(1);
+            return 0;
         } catch (SQLException e) {
             throw new RuntimeException("Failed to count orders", e);
         }
@@ -185,5 +152,30 @@ public class JdbcOrderRepository implements Repository<Order, Long> {
         order.setAmount(rs.getDouble("amount"));
         order.setCurrency(rs.getString("currency"));
         return order;
+    }
+
+    public Order saveWithConnection(Order entity, Connection conn) throws SQLException {
+        if (entity.getId() == null) {
+            String sql = "INSERT INTO orders (customer_name, amount, currency) VALUES (?, ?, ?)";
+            try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                stmt.setString(1, entity.getCustomerName());
+                stmt.setDouble(2, entity.getAmount());
+                stmt.setString(3, entity.getCurrency());
+                stmt.executeUpdate();
+                try (ResultSet rs = stmt.getGeneratedKeys()) {
+                    if (rs.next()) entity.setId(rs.getLong(1));
+                }
+            }
+        } else {
+            String sql = "UPDATE orders SET customer_name=?, amount=?, currency=? WHERE id=?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, entity.getCustomerName());
+                stmt.setDouble(2, entity.getAmount());
+                stmt.setString(3, entity.getCurrency());
+                stmt.setLong(4, entity.getId());
+                stmt.executeUpdate();
+            }
+        }
+        return entity;
     }
 }
