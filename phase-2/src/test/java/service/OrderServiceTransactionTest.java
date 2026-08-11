@@ -44,6 +44,7 @@ class OrderServiceTransactionTest {
         // Create table
         try (Connection conn = realDataSource.getConnection();
              Statement stmt = conn.createStatement()) {
+            stmt.execute("DROP TABLE IF EXISTS orders");
             stmt.execute("CREATE TABLE orders (id BIGINT AUTO_INCREMENT PRIMARY KEY, customer_name VARCHAR(255), amount DECIMAL(19,4), currency VARCHAR(10))");
         }
 
