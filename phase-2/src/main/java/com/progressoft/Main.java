@@ -3,18 +3,27 @@ package com.progressoft;
 import com.progressoft.domain.Order;
 import com.progressoft.exception.GatewayTimeoutException;
 import com.progressoft.exception.InsufficientFundsException;
+import com.progressoft.exception.ReconciliationRequiredException;
 import com.progressoft.exception.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
+import com.progressoft.repository.Repository;
 import com.progressoft.repository.inmemory.InMemoryOrderRepository;
+import com.progressoft.repository.jdbc.JdbcOrderRepository;
 import com.progressoft.service.OrderFileImporter;
 import com.progressoft.service.OrderService;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 import com.progressoft.validation.Validators;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Scanner;
 
@@ -22,7 +31,25 @@ public class Main {
 
     public static void main(String[] args) {
         // --- 1. Wire Dependencies ---
-        OrderRepository repository = new InMemoryOrderRepository();
+        DataSource dataSource = createHikariDataSource();
+        // Ensure schema exists
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE TABLE IF NOT EXISTS orders (\n" +
+                         "    id BIGINT AUTO_INCREMENT PRIMARY KEY,\n" +
+                         "    customer_name VARCHAR(255) NOT NULL,\n" +
+                         "    amount DECIMAL(19,4) NOT NULL,\n" +
+                         "    currency VARCHAR(10) NOT NULL\n" +
+                         ")\n");
+            System.out.println("    Database schema ready.");
+        } catch (SQLException e) {
+            System.err.println("    Failed to create schema: " + e.getMessage());
+            // Fallback to in‑memory (but we'll just exit for clarity)
+            System.exit(1);
+        }
+
+        // --- 2. Wire Dependencies ---
+        Repository<Order, Long> repository = new JdbcOrderRepository(dataSource);
 
         PaymentGateway paymentGateway = order -> {
             if (order.getAmount() > 800) {
@@ -47,7 +74,8 @@ public class Main {
                 repository,
                 paymentGateway,
                 composedValidator,
-                enricher
+                enricher,
+                dataSource
         );
 
         // --- 2. Interactive Menu ---
@@ -149,6 +177,14 @@ public class Main {
             System.out.println("      Endpoint: " + e.getEndpoint());
             System.out.println("      Timeout: " + e.getTimeoutMillis() + "ms");
             System.out.println("      Operation: " + e.getOperation());
+        } catch (ReconciliationRequiredException e) {
+            // This means the order was charged but failed to persist – manual review needed.
+            System.out.println("    CRITICAL");
+            System.out.println("    Order was charged but could not be saved to the database.");
+            System.out.println("    Please check the order and reconcile manually.");
+            System.out.println("    Order details: " + e.getOrder().getCustomerName() +
+                    ", amount " + e.getOrder().getAmount() +
+                    " " + e.getOrder().getCurrency());
         }
     }
 
@@ -233,5 +269,15 @@ public class Main {
         } catch (IOException e) {
             System.out.println("    Error reading file: " + e.getMessage());
         }
+    }
+    public static DataSource createHikariDataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1");
+        config.setUsername("sa");
+        config.setPassword("");
+        config.setDriverClassName("org.h2.Driver");
+        config.setMaximumPoolSize(10);
+        config.setAutoCommit(false); // we'll manage transactions manually
+        return new HikariDataSource(config);
     }
 }
