@@ -2,12 +2,12 @@ package repository;
 
 import com.progressoft.domain.Order;
 import com.progressoft.repository.jdbc.JdbcOrderRepository;
-import org.h2.jdbcx.JdbcDataSource;
+import com.zaxxer.hikari.HikariDataSource;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
@@ -17,29 +17,30 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class JdbcOrderRepositoryTest {
 
+    private HikariDataSource dataSource;
     private JdbcOrderRepository repository;
-    private JdbcDataSource dataSource;
 
     @BeforeEach
-    void setUp() throws SQLException {
-        // Create in-memory H2 data source
-        dataSource = new JdbcDataSource();
-        dataSource.setURL("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1");
-        dataSource.setUser("sa");
-        dataSource.setPassword("");
+    void setUp() throws Exception {
+        dataSource = TestDataSourceFactory.createHikariDataSource();
 
-        // Create table
+        // Clean and create table
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
-            stmt.execute("CREATE TABLE orders (\n" +
-                         "    id BIGINT AUTO_INCREMENT PRIMARY KEY,\n" +
-                         "    customer_name VARCHAR(255) NOT NULL,\n" +
-                         "    amount DECIMAL(19,4) NOT NULL,\n" +
-                         "    currency VARCHAR(10) NOT NULL\n" +
-                         ")\n");
+            stmt.execute("DROP TABLE IF EXISTS orders");
+            stmt.execute("CREATE TABLE orders (" +
+                    "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                    "customer_name VARCHAR(255) NOT NULL, " +
+                    "amount DECIMAL(19,4) NOT NULL, " +
+                    "currency VARCHAR(10) NOT NULL)");
         }
 
         repository = new JdbcOrderRepository(dataSource);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (dataSource != null) dataSource.close();
     }
 
     @Test
@@ -50,7 +51,6 @@ class JdbcOrderRepositoryTest {
         order.setCurrency("USD");
 
         Order saved = repository.save(order);
-
         assertNotNull(saved.getId());
         assertEquals("Alice", saved.getCustomerName());
         assertEquals(100.50, saved.getAmount(), 0.001);

@@ -14,7 +14,6 @@ public class TestDataSourceFactory {
         config.setPassword("");
         config.setDriverClassName("org.h2.Driver");
         config.setMaximumPoolSize(5);
-        config.setAutoCommit(false); // we manage transactions manually
         return new HikariDataSource(config);
     }
 }

@@ -277,7 +277,6 @@ public class Main {
         config.setPassword("");
         config.setDriverClassName("org.h2.Driver");
         config.setMaximumPoolSize(10);
-        config.setAutoCommit(false); // we'll manage transactions manually
         return new HikariDataSource(config);
     }
 }

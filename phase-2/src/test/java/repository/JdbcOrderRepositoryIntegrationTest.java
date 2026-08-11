@@ -23,10 +23,13 @@ class JdbcOrderRepositoryIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         dataSource = TestDataSourceFactory.createHikariDataSource();
-        // create table
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
-            stmt.execute("CREATE TABLE orders (id BIGINT AUTO_INCREMENT PRIMARY KEY, customer_name VARCHAR(255), amount DECIMAL(19,4), currency VARCHAR(10))");
+            stmt.execute("CREATE TABLE IF NOT EXISTS orders (" +
+                    "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
+                    "customer_name VARCHAR(255) NOT NULL, " +
+                    "amount DECIMAL(19,4) NOT NULL, " +
+                    "currency VARCHAR(10) NOT NULL)");
         }
         repository = new JdbcOrderRepository(dataSource);
     }
@@ -42,12 +45,15 @@ class JdbcOrderRepositoryIntegrationTest {
         order.setCustomerName("IntegrationTest");
         order.setAmount(99.99);
         order.setCurrency("EUR");
+
         Order saved = repository.save(order);
         assertNotNull(saved.getId());
+
         Optional<Order> found = repository.findById(saved.getId());
         assertTrue(found.isPresent());
         assertEquals("IntegrationTest", found.get().getCustomerName());
+        assertEquals(99.99, found.get().getAmount(), 0.001);
+        assertEquals("EUR", found.get().getCurrency());
     }
 
-    // Add more tests: update, delete, count, etc.
 }
