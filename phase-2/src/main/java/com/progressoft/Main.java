@@ -77,6 +77,7 @@ public class Main {
             }
             System.out.println();
         }
+        service.shutdownExecutor();
         scanner.close();
     }
 
@@ -187,4 +188,5 @@ public class Main {
                     " (" + o.getCurrency() + ")");
         }
     }
+
 }
