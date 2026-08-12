@@ -8,7 +8,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import repository.TestDataSourceFactory;
 
+import javax.sql.DataSource;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -28,6 +30,7 @@ class OrderServiceConcurrencyTest {
 
     @BeforeEach
     void setUp() {
+        DataSource dataSource = TestDataSourceFactory.createHikariDataSource();
         service = new OrderService(
                 new InMemoryOrderRepository(),
                 order -> {},
@@ -36,7 +39,7 @@ class OrderServiceConcurrencyTest {
                         .and(Validators.currencyCheck("USD", "EUR", "GBP", "OMR")),
                 Validators.defaultCurrency("OMR")
                         .andThen(Validators.timestampEnricher()),
-                POOL_SIZE
+                POOL_SIZE, dataSource
         );
 
         testOrders = IntStream.range(0, BATCH_SIZE)
