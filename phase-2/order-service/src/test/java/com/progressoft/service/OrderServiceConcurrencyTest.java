@@ -65,15 +65,18 @@ class OrderServiceConcurrencyTest {
         OrderService.ProcessingResult sequential = service.processBatchWithStreams(testOrders);
         OrderService.ProcessingResult concurrent = service.processBatchConcurrently(testOrders);
 
+        // Compare totals with delta
         assertMapsEqual(sequential.getTotalsByCurrency(),
                 concurrent.getTotalsByCurrency(),
                 DELTA);
 
+        // Partition sizes must match
         assertEquals(sequential.getPartitioned().get(true).size(),
                 concurrent.getPartitioned().get(true).size());
         assertEquals(sequential.getPartitioned().get(false).size(),
                 concurrent.getPartitioned().get(false).size());
 
+        // All rejected orders must carry a reason
         concurrent.getPartitioned().get(false)
                 .forEach(p -> assertNotNull(p.getRejectionReason()));
     }
