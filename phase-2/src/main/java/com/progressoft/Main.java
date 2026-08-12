@@ -272,7 +272,7 @@ public class Main {
     }
     public static DataSource createHikariDataSource() {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1");
+        config.setJdbcUrl("jdbc:h2:~/orders;DB_CLOSE_DELAY=-1");
         config.setUsername("sa");
         config.setPassword("");
         config.setDriverClassName("org.h2.Driver");
