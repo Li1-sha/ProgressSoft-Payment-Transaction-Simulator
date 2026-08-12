@@ -7,7 +7,7 @@ import com.progressoft.exceptions.ReconciliationRequiredException;
 import com.progressoft.exceptions.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
-import com.progressoft.repository.Repository;
+import com.progressoft.repository.proxy.RepositoryProxy;
 import com.progressoft.repository.jdbc.JdbcOrderRepository;
 import com.progressoft.service.OrderFileImporter;
 import com.progressoft.service.OrderService;
@@ -48,8 +48,10 @@ public class Main {
         }
 
         // --- 2. Wire Dependencies ---
-        OrderRepository repository = new JdbcOrderRepository(dataSource);
-
+        OrderRepository repository = RepositoryProxy.loggingProxy(
+                new JdbcOrderRepository(dataSource),
+                OrderRepository.class
+        );
         PaymentGateway paymentGateway = order -> {
             // Simulate different failures based on amount
             if (order.getAmount() > 800) {

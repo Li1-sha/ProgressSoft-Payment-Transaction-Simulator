@@ -9,12 +9,26 @@ import java.util.Arrays;
 
 public class RepositoryProxy {
 
+    // Original method – returns Repository (generic)
     @SuppressWarnings("unchecked")
     public static <T extends Identifiable<ID>, ID> Repository<T, ID> loggingProxy(Repository<T, ID> target) {
         return (Repository<T, ID>) Proxy.newProxyInstance(
                 target.getClass().getClassLoader(),
                 new Class[]{Repository.class},
                 new LoggingHandler(target)
+        );
+    }
+
+    // New method – returns a proxy of the given repository interface (e.g., OrderRepository)
+    @SuppressWarnings("unchecked")
+    public static <R> R loggingProxy(R target, Class<R> repoInterface) {
+        if (!repoInterface.isInterface()) {
+            throw new IllegalArgumentException("repoInterface must be an interface");
+        }
+        return (R) Proxy.newProxyInstance(
+                target.getClass().getClassLoader(),
+                new Class[]{repoInterface},
+                new LoggingHandler((Repository<?, ?>) target)
         );
     }
 
@@ -28,7 +42,6 @@ public class RepositoryProxy {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             String methodName = method.getName();
-            // Use Order.toString() via args (if args are Orders, they have nice toString)
             String argsString = args != null ? Arrays.toString(args) : "[]";
 
             System.out.println(">>> " + target.getClass().getSimpleName() + "." + methodName
@@ -45,7 +58,7 @@ public class RepositoryProxy {
                 long duration = System.nanoTime() - start;
                 System.out.println("<<< " + methodName + " threw " + t.getCause()
                         + " in " + duration / 1_000_000 + "ms");
-                throw t.getCause(); // unwrap InvocationTargetException
+                throw t.getCause();
             }
         }
     }
