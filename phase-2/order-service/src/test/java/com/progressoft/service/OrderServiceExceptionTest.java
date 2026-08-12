@@ -7,6 +7,7 @@ import com.progressoft.exceptions.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.TestDataSourceFactory;
+import com.progressoft.repository.TransactionalOrderRepository;
 import com.progressoft.repository.inmemory.InMemoryOrderRepository;
 import com.progressoft.service.OrderService;
 import com.progressoft.validation.OrderEnricher;
@@ -18,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class OrderServiceExceptionTest {
 
-    private final OrderRepository repository = new InMemoryOrderRepository();
+    private final TransactionalOrderRepository repository = new InMemoryOrderRepository();
     private final PaymentValidator validator = Validators.positiveAmount()
             .and(Validators.maxLimit(1000))
             .and(Validators.currencyCheck("OMR"));
