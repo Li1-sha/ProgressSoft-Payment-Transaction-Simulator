@@ -1,16 +1,16 @@
 package com.progressoft.service;
 
 import com.progressoft.domain.Order;
-import com.progressoft.exceptions.GatewayTimeoutException;
-import com.progressoft.exceptions.InsufficientFundsException;
-import com.progressoft.exceptions.OrderNotFoundException;
-import com.progressoft.exceptions.ValidationFailedException;
+import com.progressoft.exceptions.*;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
+import com.progressoft.repository.jdbc.JdbcOrderRepository;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +43,14 @@ public class OrderService {
         this.dataSource = dataSource;
     }
 
-    // Original constructor – delegates to the above with default pool size
+    public OrderService(OrderRepository orderRepository,
+                        PaymentGateway paymentGateway,
+                        PaymentValidator paymentValidator,
+                        OrderEnricher orderEnricher) {
+        this(orderRepository, paymentGateway, paymentValidator, orderEnricher,
+                Runtime.getRuntime().availableProcessors(),
+                null);
+    }
     public OrderService(OrderRepository orderRepository,
                         PaymentGateway paymentGateway,
                         PaymentValidator paymentValidator,
@@ -53,13 +60,28 @@ public class OrderService {
                 Runtime.getRuntime().availableProcessors(), dataSource);
     }
 
-    public Order placeOrder(Order order) throws ValidationFailedException, InsufficientFundsException {
-        // 1. Enrich the order (apply default currency, timestamp, etc.)
-            Order enrichedOrder = orderEnricher.enrich(order);
-            paymentValidator.validate(enrichedOrder);
-            paymentGateway.charge(enrichedOrder);
-            return orderRepository.save(enrichedOrder);
+    public Order placeOrder(Order order) throws ValidationFailedException,
+            InsufficientFundsException, GatewayTimeoutException,
+            ReconciliationRequiredException {
+        Order enriched = orderEnricher.enrich(order);
+        paymentValidator.validate(enriched);
+        paymentGateway.charge(enriched);
 
+        Connection conn = null;
+        try {
+            conn = dataSource.getConnection();
+            conn.setAutoCommit(false);
+            Order saved = ((JdbcOrderRepository) orderRepository).saveWithConnection(enriched, conn);
+            conn.commit();
+            return saved;
+        } catch (SQLException e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ignored) {}
+            throw new ReconciliationRequiredException(
+                    "Order charged but DB write failed", enriched, e
+            );
+        } finally {
+            if (conn != null) try { conn.close(); } catch (SQLException ignored) {}
+        }
     }
         public Order findOrder (Long id){
             return orderRepository.findById(id)

@@ -2,9 +2,8 @@ package com.progressoft.service;
 
 import com.progressoft.domain.Order;
 import com.progressoft.exceptions.ReconciliationRequiredException;
-import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.TestDataSourceFactory;
-
+import com.progressoft.repository.jdbc.JdbcOrderRepository;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -16,7 +15,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import com.progressoft.repository.jdbc.JdbcOrderRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
@@ -29,6 +28,7 @@ class OrderServiceTransactionTest {
     static void enableExperimentalByteBuddy() {
         System.setProperty("net.bytebuddy.experimental", "true");
     }
+
     private DataSource realDataSource;
     private JdbcOrderRepository realRepository;
     private JdbcOrderRepository spyRepository;
@@ -48,11 +48,11 @@ class OrderServiceTransactionTest {
         spyRepository = spy(realRepository);
 
         service = new OrderService(
-                (OrderRepository) spyRepository,
-                order -> {},        // PaymentGateway
-                order -> {},        // PaymentValidator
-                order -> order,     // OrderEnricher
-                realDataSource      // DataSource
+                spyRepository,
+                order -> {},      // PaymentGateway
+                order -> {},      // PaymentValidator
+                order -> order,   // OrderEnricher
+                realDataSource
         );
     }
 
@@ -63,13 +63,11 @@ class OrderServiceTransactionTest {
         order.setAmount(100);
         order.setCurrency("USD");
 
-        // Force SQLException on save
         doThrow(new SQLException("Forced DB failure"))
                 .when(spyRepository).saveWithConnection(any(Order.class), any(Connection.class));
 
         assertThrows(ReconciliationRequiredException.class, () -> service.placeOrder(order));
 
-        // Verify no rows persisted
         assertEquals(0, realRepository.findAll().size());
     }
 }

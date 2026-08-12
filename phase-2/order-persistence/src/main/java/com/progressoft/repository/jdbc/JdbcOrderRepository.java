@@ -1,6 +1,7 @@
 package com.progressoft.repository.jdbc;
 
 import com.progressoft.domain.Order;
+import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.Repository;
 import javax.sql.DataSource;
 import java.sql.*;
@@ -9,7 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public class JdbcOrderRepository implements Repository<Order, Long> {
+public class JdbcOrderRepository implements OrderRepository {
 
     private final DataSource dataSource;
 

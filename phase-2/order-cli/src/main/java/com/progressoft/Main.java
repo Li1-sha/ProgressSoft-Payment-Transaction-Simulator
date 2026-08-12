@@ -1,9 +1,10 @@
 package com.progressoft;
 
 import com.progressoft.domain.Order;
-import com.progressoft.exception.GatewayTimeoutException;
-import com.progressoft.exception.InsufficientFundsException;
-import com.progressoft.exception.ValidationFailedException;
+import com.progressoft.exceptions.GatewayTimeoutException;
+import com.progressoft.exceptions.InsufficientFundsException;
+import com.progressoft.exceptions.ReconciliationRequiredException;
+import com.progressoft.exceptions.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.inmemory.InMemoryOrderRepository;
@@ -47,6 +48,7 @@ public class Main {
                 paymentGateway,
                 composedValidator,
                 enricher
+
         );
 
         // --- 2. Interactive Menu ---
@@ -147,6 +149,8 @@ public class Main {
             System.out.println("      Endpoint: " + e.getEndpoint());
             System.out.println("      Timeout: " + e.getTimeoutMillis() + "ms");
             System.out.println("      Operation: " + e.getOperation());
+        } catch (ReconciliationRequiredException e) {
+            throw new RuntimeException(e);
         }
     }
 
