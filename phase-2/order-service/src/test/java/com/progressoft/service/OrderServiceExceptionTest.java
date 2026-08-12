@@ -13,6 +13,7 @@ import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 import com.progressoft.validation.Validators;
 import org.junit.jupiter.api.Test;
+import javax.sql.DataSource;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class OrderServiceExceptionTest {
@@ -24,16 +25,23 @@ public class OrderServiceExceptionTest {
 
     private final OrderEnricher enricher = Validators.defaultCurrency("OMR");
 
-    @Test
-    void placeOrder_throwsValidationFailed_whenAmountNegative() {
-        PaymentGateway gateway = order -> {};
-        OrderService service = new OrderService(
+    // Helper to create service with a given PaymentGateway
+    private OrderService createService(PaymentGateway gateway) {
+        DataSource dataSource = TestDataSourceFactory.createHikariDataSource();
+        return new OrderService(
                 repository,
                 gateway,
                 validator,
                 enricher,
-                TestDataSourceFactory.createHikariDataSource() // DataSource
+                dataSource
         );
+    }
+
+    @Test
+    void placeOrder_throwsValidationFailed_whenAmountNegative() {
+        PaymentGateway gateway = order -> {};
+        OrderService service = createService(gateway);
+
 
         Order order = new Order();
         order.setCustomerName("Ali");
@@ -48,13 +56,8 @@ public class OrderServiceExceptionTest {
         PaymentGateway failingGateway = order -> {
             throw new InsufficientFundsException(order.getAmount(), 20.0);
         };
-        OrderService service = new OrderService(
-                repository,
-                failingGateway,
-                validator,
-                enricher,
-                TestDataSourceFactory.createHikariDataSource() // DataSource
-        );
+        OrderService service = createService(failingGateway);
+
 
         Order order = new Order();
         order.setCustomerName("Ahmed");
@@ -73,13 +76,8 @@ public class OrderServiceExceptionTest {
         PaymentGateway timeoutGateway = order -> {
             throw new GatewayTimeoutException("api.payments.com", 3000L, "auth");
         };
-        OrderService service = new OrderService(
-                repository,
-                timeoutGateway,
-                validator,
-                enricher,
-                TestDataSourceFactory.createHikariDataSource() // DataSource
-        );
+
+        OrderService service = createService(timeoutGateway);
 
         Order order = new Order();
         order.setCustomerName("Sara");

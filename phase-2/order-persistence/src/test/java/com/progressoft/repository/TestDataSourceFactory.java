@@ -3,6 +3,8 @@ package com.progressoft.repository;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
+import javax.sql.DataSource;
+
 public class TestDataSourceFactory {
 
     public static HikariDataSource createHikariDataSource() {

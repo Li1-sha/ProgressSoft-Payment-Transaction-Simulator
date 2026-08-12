@@ -7,12 +7,22 @@ import com.progressoft.exceptions.ReconciliationRequiredException;
 import com.progressoft.exceptions.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
-import com.progressoft.repository.inmemory.InMemoryOrderRepository;
+import com.progressoft.repository.Repository;
+import com.progressoft.repository.jdbc.JdbcOrderRepository;
+import com.progressoft.service.OrderFileImporter;
 import com.progressoft.service.OrderService;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 import com.progressoft.validation.Validators;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
+import javax.sql.DataSource;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Scanner;
 
@@ -20,9 +30,26 @@ public class Main {
 
     public static void main(String[] args) {
         // --- 1. Wire Dependencies ---
-        OrderRepository repository = new InMemoryOrderRepository();
+        DataSource dataSource = createHikariDataSource();
+        // Ensure schema exists
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE TABLE IF NOT EXISTS orders (\n" +
+                         "    id BIGINT AUTO_INCREMENT PRIMARY KEY,\n" +
+                         "    customer_name VARCHAR(255) NOT NULL,\n" +
+                         "    amount DECIMAL(19,4) NOT NULL,\n" +
+                         "    currency VARCHAR(10) NOT NULL\n" +
+                         ")\n");
+            System.out.println("    Database schema ready.");
+        } catch (SQLException e) {
+            System.err.println("    Failed to create schema: " + e.getMessage());
+            // Fallback to in‑memory (but we'll just exit for clarity)
+            System.exit(1);
+        }
 
-        // Dummy PaymentGateway with realistic failure scenarios
+        // --- 2. Wire Dependencies ---
+        OrderRepository repository = new JdbcOrderRepository(dataSource);
+
         PaymentGateway paymentGateway = order -> {
             // Simulate different failures based on amount
             if (order.getAmount() > 800) {
@@ -47,8 +74,8 @@ public class Main {
                 repository,
                 paymentGateway,
                 composedValidator,
-                enricher
-
+                enricher,
+                dataSource
         );
 
         // --- 2. Interactive Menu ---
@@ -69,13 +96,18 @@ public class Main {
 
             switch (choice) {
                 case "1": placeNewOrder(scanner, service);
-                case "2" : findOrderById(scanner, service);
-                case "3" : showAllOrders(service);
-                case "4" : {
-                    running = false;
+                    break;
+                case "2": findOrderById(scanner, service);
+                    break;
+                case "3": showAllOrders(service);
+                    break;
+                case "4": running = false;
                     System.out.println("\n Exiting. Goodbye!");
-                }
-                default : System.out.println("Invalid option. Please enter 1, 2, 3, or 4.");
+                    break;
+                case "5": importOrdersFromFile(scanner, service);
+                    break;
+                default: System.out.println("Invalid option. Please enter 1, 2, 3, 4, or 5.");
+                    break;
             }
             System.out.println();
         }
@@ -89,6 +121,7 @@ public class Main {
         System.out.println("2. Find order by ID");
         System.out.println("3. Show all orders");
         System.out.println("4. Exit");
+        System.out.println("5. Import orders from CSV file");
         System.out.print("Choose an option: ");
     }
 
@@ -121,7 +154,7 @@ public class Main {
         System.out.print("Enter currency (e.g., OMR, EUR, USD, GBP) [Press Enter for OMR]: ");
         String currency = scanner.nextLine().trim().toUpperCase();
         if (currency.isEmpty()) {
-            currency = null; // Let enricher set default (OMR)
+            currency = null;
         }
 
         // 4. Build the order
@@ -150,7 +183,13 @@ public class Main {
             System.out.println("      Timeout: " + e.getTimeoutMillis() + "ms");
             System.out.println("      Operation: " + e.getOperation());
         } catch (ReconciliationRequiredException e) {
-            throw new RuntimeException(e);
+            // This means the order was charged but failed to persist – manual review needed.
+            System.out.println("    CRITICAL");
+            System.out.println("    Order was charged but could not be saved to the database.");
+            System.out.println("    Please check the order and reconcile manually.");
+            System.out.println("    Order details: " + e.getOrder().getCustomerName() +
+                    ", amount " + e.getOrder().getAmount() +
+                    " " + e.getOrder().getCurrency());
         }
     }
 
@@ -193,4 +232,56 @@ public class Main {
         }
     }
 
+    private static void importOrdersFromFile(Scanner scanner, OrderService service) {
+        System.out.println("\n--- Import Orders from CSV ---");
+        System.out.print("Enter the CSV file path: ");
+        String filePath = scanner.nextLine().trim();
+
+        if (filePath.isEmpty()) {
+            System.out.println("File path cannot be empty.");
+            return;
+        }
+
+        OrderFileImporter importer = new OrderFileImporter();
+        try {
+            OrderFileImporter.ImportResult result = importer.importOrders(Path.of(filePath));
+
+            System.out.println("    Valid orders: " + result.getValidCount());
+            System.out.println("    Skipped lines: " + result.getSkippedCount());
+
+            if (result.getSkippedCount() > 0) {
+                System.out.println("    --- Skipped lines ---");
+                result.getSkipped().forEach(s ->
+                        System.out.println("      Line: " + s.getLine() + " | Reason: " + s.getReason())
+                );
+            }
+
+            if (result.getValidCount() > 0) {
+                OrderService.ProcessingResult processingResult =
+                        service.processBatchWithStreams(result.getOrders());
+
+                System.out.println("    --- Pipeline results ---");
+                System.out.println("      Approved: " + processingResult.getPartitioned().get(true).size());
+                System.out.println("      Rejected: " + processingResult.getPartitioned().get(false).size());
+                System.out.println("      Totals per currency:");
+                processingResult.getTotalsByCurrency().forEach((currency, total) ->
+                        System.out.println("        " + currency + ": " + total)
+                );
+            } else {
+                System.out.println("    No valid orders to process.");
+            }
+
+        } catch (IOException e) {
+            System.out.println("    Error reading file: " + e.getMessage());
+        }
+    }
+    public static DataSource createHikariDataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:h2:~/orders;DB_CLOSE_DELAY=-1");
+        config.setUsername("sa");
+        config.setPassword("");
+        config.setDriverClassName("org.h2.Driver");
+        config.setMaximumPoolSize(10);
+        return new HikariDataSource(config);
+    }
 }

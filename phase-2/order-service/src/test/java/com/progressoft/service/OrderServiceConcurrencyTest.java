@@ -8,7 +8,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-
 import javax.sql.DataSource;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +29,6 @@ class OrderServiceConcurrencyTest {
     @BeforeEach
     void setUp() {
         DataSource dataSource = TestDataSourceFactory.createHikariDataSource();
-
         service = new OrderService(
                 new InMemoryOrderRepository(),
                 order -> {},
