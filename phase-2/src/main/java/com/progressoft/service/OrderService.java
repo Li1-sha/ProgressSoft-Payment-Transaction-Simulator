@@ -61,28 +61,32 @@ public class OrderService {
     public Order placeOrder(Order order) throws ValidationFailedException,
             InsufficientFundsException, GatewayTimeoutException,
             ReconciliationRequiredException {
-        // 1. Enrich & validate
+
         Order enriched = orderEnricher.enrich(order);
         paymentValidator.validate(enriched);
-
-        // 2. Charge (may throw)
         paymentGateway.charge(enriched);
 
-        // 3. Persist with transaction
-        Connection conn = null;
-        try {
-            conn = dataSource.getConnection();
-            conn.setAutoCommit(false);
-            Order saved = ((JdbcOrderRepository) orderRepository).saveWithConnection(enriched, conn);
-            conn.commit();
-            return saved;
-        } catch (SQLException e) {
-            if (conn != null) try { conn.rollback(); } catch (SQLException ignored) {}
-            throw new ReconciliationRequiredException(
-                    "Order charged but DB write failed", enriched, e
-            );
-        } finally {
-            if (conn != null) try { conn.close(); } catch (SQLException ignored) {}
+        // If we're using a JdbcOrderRepository, we can manage a transaction
+        if (orderRepository instanceof JdbcOrderRepository) {
+            Connection conn = null;
+            try {
+                conn = dataSource.getConnection();
+                conn.setAutoCommit(false);
+                Order saved = ((JdbcOrderRepository) orderRepository)
+                        .saveWithConnection(enriched, conn);
+                conn.commit();
+                return saved;
+            } catch (SQLException e) {
+                if (conn != null) try { conn.rollback(); } catch (SQLException ignored) {}
+                throw new ReconciliationRequiredException(
+                        "Order charged but DB write failed", enriched, e
+                );
+            } finally {
+                if (conn != null) try { conn.close(); } catch (SQLException ignored) {}
+            }
+        } else {
+            // Fallback for non-JDBC repositories – no transaction, but also no rollback
+            return orderRepository.save(enriched);
         }
     }
         public Order findOrder (Long id){
