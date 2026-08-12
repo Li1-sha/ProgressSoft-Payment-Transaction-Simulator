@@ -49,8 +49,12 @@ public class Order implements Identifiable<Long> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Order order = (Order) o;
-        if (id != null && order.id != null) {
-            return id.equals(order.id);
+
+        if (this.id != null && order.id != null) {
+            return this.id.equals(order.id);
+        }
+        if (this.id == null ^ order.id == null) {
+            return false;
         }
         return Double.compare(order.amount, amount) == 0 &&
                 Objects.equals(customerName, order.customerName) &&
@@ -59,7 +63,9 @@ public class Order implements Identifiable<Long> {
 
     @Override
     public int hashCode() {
-        if (id != null) return id.hashCode();
+        if (id != null) {
+            return id.hashCode();
+        }
         return Objects.hash(customerName, amount, currency);
     }
 
