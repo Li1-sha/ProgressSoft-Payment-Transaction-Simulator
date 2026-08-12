@@ -4,6 +4,7 @@ import com.progressoft.domain.Order;
 import com.progressoft.exceptions.*;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
+import com.progressoft.repository.TransactionalOrderRepository;
 import com.progressoft.repository.jdbc.JdbcOrderRepository;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 
 public class OrderService {
 
-    private final OrderRepository orderRepository;
+    private final TransactionalOrderRepository orderRepository;
     private final PaymentGateway paymentGateway;
     private final PaymentValidator paymentValidator;
     private final OrderEnricher orderEnricher;
@@ -29,7 +30,7 @@ public class OrderService {
     private final DataSource dataSource;
 
     // Constructor with custom pool size
-    public OrderService(OrderRepository orderRepository,
+    public OrderService(TransactionalOrderRepository orderRepository,
                         PaymentGateway paymentGateway,
                         PaymentValidator paymentValidator,
                         OrderEnricher orderEnricher,
@@ -43,7 +44,7 @@ public class OrderService {
         this.dataSource = dataSource;
     }
 
-    public OrderService(OrderRepository orderRepository,
+    public OrderService(TransactionalOrderRepository orderRepository,
                         PaymentGateway paymentGateway,
                         PaymentValidator paymentValidator,
                         OrderEnricher orderEnricher) {
@@ -51,7 +52,7 @@ public class OrderService {
                 Runtime.getRuntime().availableProcessors(),
                 null);
     }
-    public OrderService(OrderRepository orderRepository,
+    public OrderService(TransactionalOrderRepository orderRepository,
                         PaymentGateway paymentGateway,
                         PaymentValidator paymentValidator,
                         OrderEnricher orderEnricher,
@@ -71,7 +72,7 @@ public class OrderService {
         try {
             conn = dataSource.getConnection();
             conn.setAutoCommit(false);
-            Order saved = ((JdbcOrderRepository) orderRepository).saveWithConnection(enriched, conn);
+            Order saved = orderRepository.saveWithConnection(enriched, conn);
             conn.commit();
             return saved;
         } catch (SQLException e) {

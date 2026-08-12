@@ -3,6 +3,8 @@ package com.progressoft.repository.jdbc;
 import com.progressoft.domain.Order;
 import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.Repository;
+import com.progressoft.repository.TransactionalOrderRepository;
+
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
@@ -10,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public class JdbcOrderRepository implements OrderRepository {
+public class JdbcOrderRepository implements TransactionalOrderRepository {
 
     private final DataSource dataSource;
 

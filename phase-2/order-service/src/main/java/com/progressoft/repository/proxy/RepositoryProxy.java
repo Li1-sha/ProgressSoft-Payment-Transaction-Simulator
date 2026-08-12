@@ -32,6 +32,23 @@ public class RepositoryProxy {
         );
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T> T loggingProxy(T target, Class<?>... interfaces) {
+        // If no interfaces provided, use the target's own interfaces
+        if (interfaces.length == 0) {
+            return (T) Proxy.newProxyInstance(
+                    target.getClass().getClassLoader(),
+                    target.getClass().getInterfaces(),
+                    new LoggingHandler((Repository<?, ?>) target)
+            );
+        }
+        return (T) Proxy.newProxyInstance(
+                target.getClass().getClassLoader(),
+                interfaces,
+                new LoggingHandler((Repository<?, ?>) target)
+        );
+    }
+
     private static class LoggingHandler implements InvocationHandler {
         private final Repository<?, ?> target;
 
