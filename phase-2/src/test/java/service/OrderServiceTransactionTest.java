@@ -17,6 +17,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -75,5 +76,25 @@ class OrderServiceTransactionTest {
 
         // Verify no rows persisted
         assertEquals(0, realRepository.findAll().size());
+    }
+
+    @Test
+    void placeOrderSuccessfully() throws Exception {
+        Order order = new Order();
+        order.setCustomerName("HappyPath");
+        order.setAmount(50.0);
+        order.setCurrency("USD");
+
+        Order saved = service.placeOrder(order);
+
+        assertNotNull(saved.getId());
+        assertEquals("HappyPath", saved.getCustomerName());
+        assertEquals(50.0, saved.getAmount());
+        assertEquals("USD", saved.getCurrency());
+
+        // Verify it is actually in the database
+        List<Order> all = realRepository.findAll();
+        assertEquals(1, all.size());
+        assertEquals(saved.getId(), all.get(0).getId());
     }
 }
