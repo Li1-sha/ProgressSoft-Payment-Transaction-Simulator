@@ -17,47 +17,49 @@ public class JdbcOrderRepository implements Repository<Order, Long> {
         this.dataSource = dataSource;
     }
 
-    @Override
-    public Order save(Order entity) {
-        if (entity.getId() == null) {
-            return insert(entity);
-        } else {
-            return update(entity);
-        }
-    }
+    private Order save(Order entity, Connection providedConn) throws SQLException {
+        Connection conn = providedConn != null ? providedConn : dataSource.getConnection();
+        boolean closeConn = providedConn == null;
 
-    private Order insert(Order entity) {
-        String sql = "INSERT INTO orders (customer_name, amount, currency) VALUES (?, ?, ?)";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            stmt.setString(1, entity.getCustomerName());
-            stmt.setDouble(2, entity.getAmount());
-            stmt.setString(3, entity.getCurrency());
-            stmt.executeUpdate();
-            try (ResultSet rs = stmt.getGeneratedKeys()) {
-                if (rs.next()) {
-                    entity.setId(rs.getLong(1));
+        try {
+            if (entity.getId() == null) {
+                String sql = "INSERT INTO orders (customer_name, amount, currency) VALUES (?, ?, ?)";
+                try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                    stmt.setString(1, entity.getCustomerName());
+                    stmt.setDouble(2, entity.getAmount());
+                    stmt.setString(3, entity.getCurrency());
+                    stmt.executeUpdate();
+                    try (ResultSet rs = stmt.getGeneratedKeys()) {
+                        if (rs.next()) entity.setId(rs.getLong(1));
+                    }
+                }
+            } else {
+                String sql = "UPDATE orders SET customer_name=?, amount=?, currency=? WHERE id=?";
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setString(1, entity.getCustomerName());
+                    stmt.setDouble(2, entity.getAmount());
+                    stmt.setString(3, entity.getCurrency());
+                    stmt.setLong(4, entity.getId());
+                    stmt.executeUpdate();
                 }
             }
             return entity;
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to insert order", e);
+        } finally {
+            if (closeConn) conn.close();
         }
     }
 
-    private Order update(Order entity) {
-        String sql = "UPDATE orders SET customer_name=?, amount=?, currency=? WHERE id=?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, entity.getCustomerName());
-            stmt.setDouble(2, entity.getAmount());
-            stmt.setString(3, entity.getCurrency());
-            stmt.setLong(4, entity.getId());
-            stmt.executeUpdate();
-            return entity;
+    @Override
+    public Order save(Order entity) {
+        try {
+            return save(entity, null);
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to update order", e);
+            throw new RuntimeException("Failed to save order", e);
         }
+    }
+
+    public Order saveWithConnection(Order entity, Connection conn) throws SQLException {
+        return save(entity, conn);
     }
 
     @Override
@@ -152,30 +154,5 @@ public class JdbcOrderRepository implements Repository<Order, Long> {
         order.setAmount(rs.getDouble("amount"));
         order.setCurrency(rs.getString("currency"));
         return order;
-    }
-
-    public Order saveWithConnection(Order entity, Connection conn) throws SQLException {
-        if (entity.getId() == null) {
-            String sql = "INSERT INTO orders (customer_name, amount, currency) VALUES (?, ?, ?)";
-            try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-                stmt.setString(1, entity.getCustomerName());
-                stmt.setDouble(2, entity.getAmount());
-                stmt.setString(3, entity.getCurrency());
-                stmt.executeUpdate();
-                try (ResultSet rs = stmt.getGeneratedKeys()) {
-                    if (rs.next()) entity.setId(rs.getLong(1));
-                }
-            }
-        } else {
-            String sql = "UPDATE orders SET customer_name=?, amount=?, currency=? WHERE id=?";
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setString(1, entity.getCustomerName());
-                stmt.setDouble(2, entity.getAmount());
-                stmt.setString(3, entity.getCurrency());
-                stmt.setLong(4, entity.getId());
-                stmt.executeUpdate();
-            }
-        }
-        return entity;
     }
 }
