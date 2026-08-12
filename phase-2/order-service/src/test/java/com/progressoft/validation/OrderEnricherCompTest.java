@@ -1,7 +1,6 @@
 package com.progressoft.validation;
 
 import com.progressoft.domain.Order;
-import com.progressoft.validation.OrderEnricher;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

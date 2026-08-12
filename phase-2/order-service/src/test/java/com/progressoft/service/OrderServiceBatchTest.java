@@ -6,7 +6,6 @@ import com.progressoft.repository.TestDataSourceFactory;
 import com.progressoft.validation.Validators;
 import org.junit.jupiter.api.Test;
 
-import javax.sql.DataSource;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;

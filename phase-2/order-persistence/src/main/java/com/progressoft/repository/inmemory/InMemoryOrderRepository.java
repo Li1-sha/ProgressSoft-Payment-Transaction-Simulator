@@ -1,7 +1,6 @@
 package com.progressoft.repository.inmemory;
 
 import com.progressoft.domain.Order;
-import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.TransactionalOrderRepository;
 
 import java.util.concurrent.atomic.AtomicLong;

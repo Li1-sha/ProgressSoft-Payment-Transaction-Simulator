@@ -6,7 +6,6 @@ import com.progressoft.exceptions.InsufficientFundsException;
 import com.progressoft.exceptions.ReconciliationRequiredException;
 import com.progressoft.exceptions.ValidationFailedException;
 import com.progressoft.payment.PaymentGateway;
-import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.TransactionalOrderRepository;
 import com.progressoft.repository.proxy.RepositoryProxy;
 import com.progressoft.repository.jdbc.JdbcOrderRepository;

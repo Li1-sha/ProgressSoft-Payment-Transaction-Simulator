@@ -3,9 +3,7 @@ package com.progressoft.service;
 import com.progressoft.domain.Order;
 import com.progressoft.exceptions.*;
 import com.progressoft.payment.PaymentGateway;
-import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.TransactionalOrderRepository;
-import com.progressoft.repository.jdbc.JdbcOrderRepository;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 
