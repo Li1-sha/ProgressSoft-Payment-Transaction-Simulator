@@ -26,7 +26,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTransactionTest {
 
-    // 🔧 Enable Byte Buddy experimental mode for Java 25
     @BeforeAll
     static void enableExperimentalByteBuddy() {
         System.setProperty("net.bytebuddy.experimental", "true");
