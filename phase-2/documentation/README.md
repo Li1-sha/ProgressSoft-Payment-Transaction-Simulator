@@ -6,8 +6,6 @@ The system is split into four Maven modules that follow a strict layered archite
 **`order-service`** depends on both `order-domain` and `order-persistence` – it holds the business logic, validation, file import, and cross‑cutting proxy.  
 **`order-cli`** is the top module, depending on `order-service` (transitively pulling all others) to provide the command‑line interface.
 
-- RepositoryProxy – a java.lang.reflect.Proxy‑based decorator that adds method‑call logging to any Repository implementation, demonstrating cross‑cutting concerns without altering the underlying classes.
-
 ## Module Dependency Graph
 order-cli → order-service → order-persistence → order-domain
 
@@ -20,3 +18,11 @@ order-cli → order-service → order-persistence → order-domain
 | **order-service** | `order-domain`, `order-persistence` |
 | **order-cli** | `order-service` (transitive: `order-persistence`, `order-domain`) |
 
+## Design Patterns Used
+
+| Pattern | Implementation | Location | Why it's used |
+|---------|----------------|----------|---------------|
+| **Strategy** | `PaymentValidator` and `OrderEnricher` via `and()` / `andThen()` composition | `order-service` | Validators and enrichers are interchangeable; composition allows them to be combined dynamically without modifying existing classes. |
+| **Decorator / Proxy** | `RepositoryProxy` using `java.lang.reflect.Proxy` | `order-service` | Adds method‑call logging to repositories without touching their code – a cross‑cutting concern. This is the only Decorator in the system; it is not forced in just to tick a box. |
+
+The proxy logs every repository method call, including arguments, return value/exception, and duration. It is applied at the composition root (`Main`) and does not alter `InMemoryOrderRepository` or `JdbcOrderRepository`
