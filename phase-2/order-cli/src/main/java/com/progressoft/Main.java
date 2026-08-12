@@ -1,10 +1,7 @@
 package com.progressoft;
 
 import com.progressoft.domain.Order;
-import com.progressoft.exceptions.GatewayTimeoutException;
-import com.progressoft.exceptions.InsufficientFundsException;
-import com.progressoft.exceptions.ReconciliationRequiredException;
-import com.progressoft.exceptions.ValidationFailedException;
+import com.progressoft.exceptions.*;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.OrderRepository;
 import com.progressoft.repository.TransactionalOrderRepository;
@@ -211,12 +208,8 @@ public class Main {
             System.out.println("      Currency: " + found.getCurrency());
         } catch (NumberFormatException e) {
             System.out.println("    Invalid ID. Please enter a number.");
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("not found")) {
-                System.out.println("    " + e.getMessage());
-            } else {
-                throw e;
-            }
+        } catch (OrderNotFoundException e) {
+            System.out.println("    " + e.getMessage());
         }
     }
 
