@@ -6,13 +6,13 @@ public class GatewayTimeoutException extends RuntimeException {
     private final String operation;
     private final String errorCode;
 
-    public GatewayTimeoutException(String endpoint, long timeoutMillis, String operation, String errorCode) {
+    public GatewayTimeoutException(String endpoint, long timeoutMillis, String operation) {
         super(String.format("Gateway timeout calling %s after %d ms (operation: %s)",
                 endpoint, timeoutMillis, operation));
         this.endpoint = endpoint;
         this.timeoutMillis = timeoutMillis;
         this.operation = operation;
-        this.errorCode = errorCode;
+        this.errorCode = "TIM-001"; ;
     }
 
     public String getEndpoint() {

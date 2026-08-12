@@ -39,5 +39,6 @@ public class ExceptionDataTest {
         assertEquals("https://payments.progressoft.com/charge", ex.getEndpoint());
         assertEquals(5000L, ex.getTimeoutMillis());
         assertEquals("charge", ex.getOperation());
+        assertEquals("TIM-001", ex.getErrorCode());
     }
 }
