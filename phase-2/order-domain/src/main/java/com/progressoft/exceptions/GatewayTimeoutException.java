@@ -4,13 +4,15 @@ public class GatewayTimeoutException extends RuntimeException {
     private final String endpoint;
     private final long timeoutMillis;
     private final String operation;
+    private final String errorCode;
 
-    public GatewayTimeoutException(String endpoint, long timeoutMillis, String operation) {
+    public GatewayTimeoutException(String endpoint, long timeoutMillis, String operation, String errorCode) {
         super(String.format("Gateway timeout calling %s after %d ms (operation: %s)",
                 endpoint, timeoutMillis, operation));
         this.endpoint = endpoint;
         this.timeoutMillis = timeoutMillis;
         this.operation = operation;
+        this.errorCode = errorCode;
     }
 
     public String getEndpoint() {
@@ -23,5 +25,9 @@ public class GatewayTimeoutException extends RuntimeException {
 
     public String getOperation() {
         return operation;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
     }
 }
