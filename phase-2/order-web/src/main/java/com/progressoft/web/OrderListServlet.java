@@ -2,110 +2,55 @@ package com.progressoft.web;
 
 import com.progressoft.domain.Order;
 import com.progressoft.service.OrderService;
-import com.progressoft.validation.OrderEnricher;
-import com.progressoft.validation.PaymentValidator;
-import com.progressoft.validation.Validators;
-import com.progressoft.payment.PaymentGateway;
-import com.progressoft.repository.jdbc.JdbcOrderRepository;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 
+import javax.json.Json;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObjectBuilder;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
 
-@WebServlet("/orders")
+@WebServlet("/api/orders")
 public class OrderListServlet extends HttpServlet {
-
     private OrderService orderService;
 
     @Override
     public void init() {
-        // Wiring – same as in Main, but now inside the servlet
-        try {
-            // H2 DataSource
-            HikariConfig config = new HikariConfig();
-            config.setJdbcUrl("jdbc:h2:~/orders;DB_CLOSE_DELAY=-1");
-            config.setUsername("sa");
-            config.setPassword("");
-            config.setDriverClassName("org.h2.Driver");
-            config.setMaximumPoolSize(10);
-            HikariDataSource dataSource = new HikariDataSource(config);
-
-            // Create schema if needed
-            try (Connection conn = dataSource.getConnection();
-                 Statement stmt = conn.createStatement()) {
-                stmt.execute("CREATE TABLE IF NOT EXISTS orders (" +
-                        "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
-                        "customer_name VARCHAR(255) NOT NULL, " +
-                        "amount DECIMAL(19,4) NOT NULL, " +
-                        "currency VARCHAR(10) NOT NULL)");
-            }
-
-            // Repository
-            JdbcOrderRepository repository = new JdbcOrderRepository(dataSource);
-
-            // Gateway (dummy, because web only reads)
-            PaymentGateway paymentGateway = order -> {};
-
-            // Validator & Enricher
-            PaymentValidator composedValidator = Validators.positiveAmount()
-                    .and(Validators.maxLimit(10000.0))
-                    .and(Validators.currencyCheck("OMR", "EUR", "USD", "GBP"));
-            OrderEnricher enricher = Validators.defaultCurrency("OMR")
-                    .andThen(Validators.timestampEnricher());
-
-            // Service
-            orderService = new OrderService(
-                    repository,
-                    paymentGateway,
-                    composedValidator,
-                    enricher,
-                    dataSource
-            );
-
-            System.out.println("OrderListServlet initialized successfully.");
-
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize OrderService", e);
-        }
+        orderService = ServiceFactory.getOrderService();
     }
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-            throws IOException {
-        resp.setContentType("text/plain");
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        resp.setContentType("application/json");
         try {
             List<Order> orders = orderService.getAllOrders();
-            PrintWriter out = resp.getWriter();
-            if (orders.isEmpty()) {
-                out.println("No orders found.");
-            } else {
-                for (Order order : orders) {
-                    out.println(order);
-                }
+            JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
+            for (Order o : orders) {
+                arrayBuilder.add(toJson(o));
+            }
+            try (PrintWriter out = resp.getWriter()) {
+                out.print(arrayBuilder.build().toString());
             }
             resp.setStatus(HttpServletResponse.SC_OK);
         } catch (Exception e) {
-            // Log error (in real life use a logger)
-            e.printStackTrace();
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().println("Error retrieving orders: " + e.getMessage());
+            resp.getWriter().print(errorJson("Internal server error: " + e.getMessage()));
         }
     }
 
-    @Override
-    public void destroy() {
-        // Clean up resources (e.g., close the DataSource)
-        // Since we don't store the DataSource field, we can't close it here.
-        // In a real app, you'd keep it as a field.
-        System.out.println("OrderListServlet destroyed.");
+    static JsonObjectBuilder toJson(Order order) {
+        return Json.createObjectBuilder()
+                .add("id", order.getId())
+                .add("customerName", order.getCustomerName())
+                .add("amount", order.getAmount())
+                .add("currency", order.getCurrency());
+    }
+
+    private String errorJson(String msg) {
+        return Json.createObjectBuilder().add("error", msg).build().toString();
     }
 }
