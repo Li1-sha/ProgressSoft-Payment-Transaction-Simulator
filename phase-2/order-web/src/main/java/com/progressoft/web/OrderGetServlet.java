@@ -30,7 +30,7 @@ public class OrderGetServlet extends HttpServlet {
             Long id = Long.parseLong(pathInfo.substring(1));
             Order order = orderService.findOrder(id);
             resp.setContentType("application/json");
-            resp.getWriter().print(OrderListServlet.toJson(order).build().toString());
+            resp.getWriter().print(OrderApiServlet.toJson(order).build().toString());
             resp.setStatus(HttpServletResponse.SC_OK);
         } catch (NumberFormatException e) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid order id");
