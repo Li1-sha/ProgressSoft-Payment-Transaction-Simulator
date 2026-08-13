@@ -57,6 +57,7 @@
         <module>order-service</module>
         <module>order-cli</module>
         <module>order-web</module>
+        <module>order-web</module>
     </modules>
 
     <build>
