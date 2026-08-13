@@ -153,11 +153,15 @@ Response:
 
 Result: ✅ 200 OK – order is retrievable by ID.
 
-Summary of Status Codes
-Step	Endpoint	Status	Meaning
-1	GET /api/orders	200	Open, returns orders
-2	POST /api/orders (no login)	401	Authentication required
-3	POST /api/login	200	Login successful
-4	POST /api/orders (with session)	201	Order created
-5	GET /api/orders/1	200	Order found
+# Status Code Summary (One Table)
+
+| Endpoint | Success | Failures |
+|----------|---------|----------|
+| `GET /api/orders` | `200 OK` – returns JSON array | `500 Internal Server Error` |
+| `GET /api/orders/{id}` | `200 OK` – returns JSON object | `400 Bad Request` (invalid ID), `404 Not Found`, `500` |
+| `POST /api/orders` | `201 Created` – returns order + `Location` header | `400` (validation), `401` (no session), `402` (insufficient funds), `504` (gateway timeout), `500` (reconciliation error) |
+| `POST /api/login` | `200 OK` – returns `{"status":"ok"}` | `401 Unauthorized` (bad credentials) |
+
+- **Authentication**: Only `POST /api/orders` requires a session (returns `401` without it). All `GET` endpoints are open.
+- **Errors**: All failure responses are JSON with an `"error"` field and appropriate HTTP status.
 
