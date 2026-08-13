@@ -1,10 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <title>Order API Client</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        pre { background: #f0f0f0; padding: 10px; }
+        .error { color: red; }
+        .success { color: green; }
+        .section { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    </style>
 </head>
 <body>
-$END$
+<h1>Order API Test Client</h1>
+
+<div class="section">
+    <h2>List Orders</h2>
+    <button onclick="listOrders()">Fetch All</button>
+    <pre id="listResult"></pre>
+</div>
+
+<div class="section">
+    <h2>Get Order by ID</h2>
+    <input type="number" id="orderId" placeholder="Order ID">
+    <button onclick="getOrder()">Fetch</button>
+    <pre id="getResult"></pre>
+</div>
+
+<div class="section">
+    <h2>Place Order (requires login)</h2>
+    <input type="text" id="custName" placeholder="Customer name"><br>
+    <input type="number" step="0.01" id="amount" placeholder="Amount"><br>
+    <input type="text" id="currency" placeholder="Currency (OMR, EUR, USD, GBP)"><br>
+    <button onclick="placeOrder()">Place Order</button>
+    <pre id="postResult"></pre>
+</div>
+
+<div class="section">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Username (admin)"><br>
+    <input type="password" id="password" placeholder="Password (secret)"><br>
+    <button onclick="login()">Login</button>
+    <pre id="loginResult"></pre>
+</div>
+
+<script>
+    function request(method, url, data) {
+        const options = {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin' // include cookies/session
+        };
+        if (data) options.body = JSON.stringify(data);
+        return fetch(url, options).then(res => res.json().then(json => ({ status: res.status, body: json })));
+    }
+
+    async function listOrders() {
+        const result = await request('GET', '/api/orders');
+        document.getElementById('listResult').textContent = JSON.stringify(result.body, null, 2);
+    }
+
+    async function getOrder() {
+        const id = document.getElementById('orderId').value;
+        if (!id) { alert('Enter ID'); return; }
+        const result = await request('GET', `/api/orders/${id}`);
+        document.getElementById('getResult').textContent = JSON.stringify(result.body, null, 2);
+    }
+
+    async function placeOrder() {
+        const name = document.getElementById('custName').value;
+        const amount = parseFloat(document.getElementById('amount').value);
+        const currency = document.getElementById('currency').value;
+        if (!name || isNaN(amount) || !currency) { alert('Fill all fields'); return; }
+        const result = await request('POST', '/api/orders', { customerName: name, amount, currency });
+        document.getElementById('postResult').textContent = `Status: ${result.status}\n` + JSON.stringify(result.body, null, 2);
+    }
+
+    async function login() {
+        const user = document.getElementById('username').value;
+        const pass = document.getElementById('password').value;
+        const formData = new URLSearchParams({ username: user, password: pass });
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const body = await response.json();
+        document.getElementById('loginResult').textContent = `Status: ${response.status}\n` + JSON.stringify(body, null, 2);
+    }
+</script>
 </body>
 </html>
