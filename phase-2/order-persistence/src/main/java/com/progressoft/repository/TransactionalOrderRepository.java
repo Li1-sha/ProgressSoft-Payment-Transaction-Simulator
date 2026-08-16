@@ -6,6 +6,8 @@ import java.sql.SQLException;
 
 public interface TransactionalOrderRepository extends OrderRepository {
     default Order saveWithConnection(Order entity, Connection conn) throws SQLException {
-        throw new UnsupportedOperationException("This repository does not support transactional save");
+        throw new UnsupportedOperationException(
+                "This repository does not support transactional save with a provided connection"
+        );
     }
 }
