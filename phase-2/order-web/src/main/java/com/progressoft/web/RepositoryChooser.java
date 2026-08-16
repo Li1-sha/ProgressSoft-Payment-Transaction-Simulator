@@ -1,4 +1,19 @@
 package com.progressoft.web;
 
-public class RepositoryChooser {
+import javax.servlet.ServletContainerInitializer;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.HandlesTypes;
+import java.util.Set;
+
+@HandlesTypes({})
+public class RepositoryChooser implements ServletContainerInitializer {
+
+    @Override
+    public void onStartup(Set<Class<?>> c, ServletContext ctx) throws ServletException {
+        // Read system property: -Drepo.type=jdbc or -Drepo.type=jpa
+        String repoType = System.getProperty("repo.type", "jdbc");
+        ctx.setAttribute("repoType", repoType);
+        System.out.println("RepositoryChooser: Using " + repoType + " repository.");
+    }
 }
