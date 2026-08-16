@@ -24,7 +24,7 @@ public class AppInitializer implements ServletContextListener {
         config.setDriverClassName("org.h2.Driver");
         config.setMaximumPoolSize(10);
         HikariDataSource ds = new HikariDataSource(config);
-
+        dataSource = ds;
         // Store in ServletContext and in ServiceFactory
         sce.getServletContext().setAttribute("dataSource", ds);
         ServiceFactory.setDataSource(ds);
@@ -37,10 +37,6 @@ public class AppInitializer implements ServletContextListener {
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        // 1. Close EntityManagerFactory
-        EntityManagerFactoryProvider.shutdown();
-
-        // 2. Close DataSource
         if (dataSource instanceof AutoCloseable) {
             try {
                 ((AutoCloseable) dataSource).close();
@@ -49,6 +45,8 @@ public class AppInitializer implements ServletContextListener {
                 System.err.println("Error closing DataSource: " + e.getMessage());
             }
         }
+        EntityManagerFactoryProvider.shutdown();
+        ServiceFactory.shutdown();
     }
 
     public static DataSource getDataSource() {
