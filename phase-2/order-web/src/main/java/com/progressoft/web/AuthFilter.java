@@ -20,6 +20,12 @@ public class AuthFilter implements Filter {
     );
 
     @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        // Required method – can be empty or log something
+        System.out.println("AuthFilter initialized.");
+    }
+
+    @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         HttpServletRequest req = (HttpServletRequest) request;
@@ -36,5 +42,10 @@ public class AuthFilter implements Filter {
             }
         }
         chain.doFilter(request, response);
+    }
+
+    @Override
+    public void destroy() {
+        System.out.println("AuthFilter destroyed.");
     }
 }
