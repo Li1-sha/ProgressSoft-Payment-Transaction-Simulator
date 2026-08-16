@@ -6,7 +6,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-@WebFilter("/api/orders")
+@WebFilter("/api/orders/*")
 public class RateLimiterFilter implements Filter {
 
     private static final int MAX_REQUESTS = 5;
