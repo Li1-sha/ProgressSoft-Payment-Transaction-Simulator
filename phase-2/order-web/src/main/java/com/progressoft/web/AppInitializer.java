@@ -16,22 +16,21 @@ public class AppInitializer implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
-        // 1. Create DataSource once at startup
+        // Create DataSource once
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl("jdbc:h2:~/orders;DB_CLOSE_DELAY=-1");
         config.setUsername("sa");
         config.setPassword("");
         config.setDriverClassName("org.h2.Driver");
         config.setMaximumPoolSize(10);
-        dataSource = new HikariDataSource(config);
+        HikariDataSource ds = new HikariDataSource(config);
 
-        // Store in servlet context so other components can access it
-        sce.getServletContext().setAttribute("dataSource", dataSource);
+        // Store in ServletContext and in ServiceFactory
+        sce.getServletContext().setAttribute("dataSource", ds);
+        ServiceFactory.setDataSource(ds);
 
-        // 2. Initialize EntityManagerFactory (wires JPA)
+        // Init JPA EMF
         EntityManagerFactoryProvider.getEntityManagerFactory();
-
-        // 3. Create schema (if needed) – but JPA's update will handle it
 
         System.out.println("AppInitializer: DataSource and EntityManagerFactory created.");
     }
