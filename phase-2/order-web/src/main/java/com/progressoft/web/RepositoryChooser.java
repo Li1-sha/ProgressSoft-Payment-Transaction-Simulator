@@ -10,10 +10,10 @@ import java.util.Set;
 public class RepositoryChooser implements ServletContainerInitializer {
 
     @Override
-    public void onStartup(Set<Class<?>> c, ServletContext ctx) throws ServletException {
-        // Read system property: -Drepo.type=jdbc or -Drepo.type=jpa
+    public void onStartup(Set<Class<?>> c, ServletContext ctx) {
         String repoType = System.getProperty("repo.type", "jdbc");
         ctx.setAttribute("repoType", repoType);
+        ServiceFactory.setRepoType(repoType);
         System.out.println("RepositoryChooser: Using " + repoType + " repository.");
     }
 }
