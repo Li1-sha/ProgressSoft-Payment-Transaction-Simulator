@@ -48,9 +48,18 @@ public class JpaOrderRepository implements TransactionalOrderRepository {
 
     @Override
     public Order saveWithConnection(Order entity, Connection conn) throws SQLException {
-        // JPA doesn't work with external connections – delegate to save()
-        // This is a limitation we accept; JPA manages its own transactions.
-        return save(entity);
+        throw new UnsupportedOperationException(
+                "JPA does not support external connections. Use saveWithEntityManager instead."
+        );
+    }
+
+    public Order saveWithEntityManager(Order entity, EntityManager em) {
+        if (entity.getId() == null) {
+            em.persist(entity);
+            return entity;
+        } else {
+            return em.merge(entity);
+        }
     }
 
     @Override
