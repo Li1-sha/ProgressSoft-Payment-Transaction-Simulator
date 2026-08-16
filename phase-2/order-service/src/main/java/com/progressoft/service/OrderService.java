@@ -66,20 +66,38 @@ public class OrderService {
         paymentValidator.validate(enriched);
         paymentGateway.charge(enriched);
 
-        Connection conn = null;
-        try {
-            conn = dataSource.getConnection();
-            conn.setAutoCommit(false);
-            Order saved = orderRepository.saveWithConnection(enriched, conn);
-            conn.commit();
-            return saved;
-        } catch (SQLException e) {
-            if (conn != null) try { conn.rollback(); } catch (SQLException ignored) {}
-            throw new ReconciliationRequiredException(
-                    "Order charged but DB write failed", enriched, e
-            );
-        } finally {
-            if (conn != null) try { conn.close(); } catch (SQLException ignored) {}
+        if (orderRepository instanceof TransactionalOrderRepository) {
+            TransactionalOrderRepository txRepo = orderRepository;
+            try {
+                Connection conn = dataSource.getConnection();
+                try {
+                    conn.setAutoCommit(false);
+                    Order saved = txRepo.saveWithConnection(enriched, conn);
+                    conn.commit();
+                    return saved;
+                } catch (SQLException e) {
+                    if (conn != null) {
+                        try { conn.rollback(); } catch (SQLException ignored) {}
+                    }
+                    throw new ReconciliationRequiredException(
+                            "Order charged but DB write failed", enriched, e
+                    );
+                } finally {
+                    if (conn != null) {
+                        try { conn.close(); } catch (SQLException ignored) {}
+                    }
+                }
+            } catch (UnsupportedOperationException e) {
+                // Fallback: repository doesn't support saveWithConnection (e.g., InMemory)
+                return orderRepository.save(enriched);
+            } catch (SQLException e) {
+                // If getConnection() itself fails, wrap it
+                throw new ReconciliationRequiredException(
+                        "Order charged but DB connection failed", enriched, e
+                );
+            }
+        } else {
+            return orderRepository.save(enriched);
         }
     }
         public Order findOrder (Long id){
