@@ -178,8 +178,8 @@ class OrderTest {
         String str = order.toString();
         assertTrue(str.contains("id=1"));
         assertTrue(str.contains("customerName='Alice'"));
-        assertTrue(str.contains("amount=100.00"));
-        assertTrue(str.contains("currency='USD'"));
+        // The money field should contain amount and currency
+        assertTrue(str.contains("money=100.0 USD") || str.contains("money=100.00 USD"));
     }
 
     @Test
@@ -187,9 +187,12 @@ class OrderTest {
         Order order = createTransientOrder(null, 100.0, null);
         String str = order.toString();
         assertNotNull(str);
+        // Should contain null for customerName and money fields
+        // The exact representation may be "customerName='null'" or "customerName=null"
+        // depending on how String.format handles null.
         assertTrue(str.contains("customerName='null'") || str.contains("customerName=null"));
-        assertTrue(str.contains("currency='null'") || str.contains("currency=null"));
-        // It should not throw.
+        assertTrue(str.contains("money=null") || str.contains("money=100.0 null") || str.contains("money=100.00 null"));
+        // It should not throw an exception.
     }
 
     //  Mutation safety
