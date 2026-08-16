@@ -157,4 +157,10 @@ public class OrderApiServlet extends HttpServlet {
                 .build()
                 .toString();
     }
+
+    @Override
+    public void destroy() {
+        ServiceFactory.shutdown();
+        System.out.println("OrderApiServlet destroyed.");
+    }
 }

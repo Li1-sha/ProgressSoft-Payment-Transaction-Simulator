@@ -7,18 +7,18 @@ import com.progressoft.payment.PaymentGateway;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 public class ServiceFactory {
     private static OrderService instance;
+    private static HikariDataSource dataSource;
 
     public static synchronized OrderService getOrderService() {
         if (instance == null) {
             try {
-                DataSource dataSource = createDataSource();
+                dataSource = createDataSource();
                 createSchema(dataSource);
 
                 JdbcOrderRepository repository = new JdbcOrderRepository(dataSource);
@@ -44,7 +44,18 @@ public class ServiceFactory {
         return instance;
     }
 
-    private static DataSource createDataSource() {
+    public static synchronized void shutdown() {
+        if (dataSource != null) {
+            try {
+                dataSource.close();
+                System.out.println("ServiceFactory: DataSource closed.");
+            } catch (Exception e) {
+                System.err.println("Error closing DataSource: " + e.getMessage());
+            }
+        }
+    }
+
+    private static HikariDataSource createDataSource() {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl("jdbc:h2:~/orders;DB_CLOSE_DELAY=-1");
         config.setUsername("sa");
@@ -54,7 +65,7 @@ public class ServiceFactory {
         return new HikariDataSource(config);
     }
 
-    private static void createSchema(DataSource dataSource) {
+    private static void createSchema(HikariDataSource dataSource) {
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.execute("CREATE TABLE IF NOT EXISTS orders (" +
@@ -63,7 +74,12 @@ public class ServiceFactory {
                     "amount DECIMAL(19,4) NOT NULL, " +
                     "currency VARCHAR(10) NOT NULL)");
         } catch (SQLException e) {
-            // ignore if table exists
+            // Only ignore if table already exists
+            if (e.getErrorCode() == 42101) { // H2: table already exists
+                System.out.println("Table already exists, continuing...");
+            } else {
+                throw new RuntimeException("Failed to create schema", e);
+            }
         }
     }
 }
