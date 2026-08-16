@@ -25,7 +25,11 @@
             <artifactId>order-service</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.progressoft</groupId>
+            <artifactId>order-persistence</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- Servlet API (provided, because container provides it) -->
         <dependency>
             <groupId>javax.servlet</groupId>
