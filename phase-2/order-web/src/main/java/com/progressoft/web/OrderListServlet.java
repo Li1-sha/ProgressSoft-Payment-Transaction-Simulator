@@ -25,10 +25,10 @@ import java.util.List;
 public class OrderListServlet extends HttpServlet {
 
     private OrderService orderService;
+    private HikariDataSource dataSource;   // ✅ stored as a field
 
     @Override
     public void init() {
-        // Wiring – same as in Main, but now inside the servlet
         try {
             // H2 DataSource
             HikariConfig config = new HikariConfig();
@@ -37,7 +37,7 @@ public class OrderListServlet extends HttpServlet {
             config.setPassword("");
             config.setDriverClassName("org.h2.Driver");
             config.setMaximumPoolSize(10);
-            HikariDataSource dataSource = new HikariDataSource(config);
+            dataSource = new HikariDataSource(config);   // ✅ assign to field
 
             // Create schema if needed
             try (Connection conn = dataSource.getConnection();
@@ -94,7 +94,6 @@ public class OrderListServlet extends HttpServlet {
             }
             resp.setStatus(HttpServletResponse.SC_OK);
         } catch (Exception e) {
-            // Log error (in real life use a logger)
             e.printStackTrace();
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             resp.getWriter().println("Error retrieving orders: " + e.getMessage());
@@ -103,9 +102,16 @@ public class OrderListServlet extends HttpServlet {
 
     @Override
     public void destroy() {
-        // Clean up resources (e.g., close the DataSource)
-        // Since we don't store the DataSource field, we can't close it here.
-        // In a real app, you'd keep it as a field.
-        System.out.println("OrderListServlet destroyed.");
+        // ✅ Now we can close the DataSource properly
+        if (dataSource != null) {
+            try {
+                dataSource.close();
+                System.out.println("OrderListServlet destroyed and DataSource closed.");
+            } catch (Exception e) {
+                System.err.println("Error closing DataSource: " + e.getMessage());
+            }
+        } else {
+            System.out.println("OrderListServlet destroyed (no DataSource to close).");
+        }
     }
 }
