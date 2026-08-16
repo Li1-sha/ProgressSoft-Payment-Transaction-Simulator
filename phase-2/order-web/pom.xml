@@ -25,7 +25,11 @@
             <artifactId>order-service</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.progressoft</groupId>
+            <artifactId>order-persistence</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- Servlet API (provided, because container provides it) -->
         <dependency>
             <groupId>javax.servlet</groupId>
@@ -50,6 +54,12 @@
             <artifactId>javax.json</artifactId>
             <version>1.1.4</version>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.12.2</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

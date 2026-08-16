@@ -10,6 +10,7 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonReader;
 import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -37,18 +38,27 @@ public class OrderApiServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String pathInfo = req.getPathInfo();
-
-        // If no path info or just "/", list all orders
+        // Read custom cookie (optional)
+        Cookie[] cookies = req.getCookies();
+        if (cookies != null) {
+            for (Cookie c : cookies) {
+                if ("lastViewedOrder".equals(c.getName())) {
+                    String lastOrderId = c.getValue();
+                    // Use it – e.g., log it or store in request attribute
+                    req.setAttribute("lastViewedOrder", lastOrderId);
+                    System.out.println("Last viewed order: " + lastOrderId);
+                }
+            }
+        }
         if (pathInfo == null || pathInfo.equals("/")) {
             listAllOrders(resp);
             return;
         }
 
-        // Otherwise try to parse an ID and fetch a single order
         try {
-            String idStr = pathInfo.substring(1); // remove leading '/'
+            String idStr = pathInfo.substring(1);
             Long id = Long.parseLong(idStr);
-            getOrderById(id, resp);
+            getOrderById(id, req, resp);  // pass req as well for cookie access
         } catch (NumberFormatException e) {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             resp.setContentType("application/json");
@@ -90,12 +100,17 @@ public class OrderApiServlet extends HttpServlet {
         }
     }
 
-    private void getOrderById(Long id, HttpServletResponse resp) throws IOException {
+    private void getOrderById(Long id, HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("application/json");
         try {
             Order order = orderService.findOrder(id);
             resp.getWriter().print(toJson(order).build().toString());
             resp.setStatus(HttpServletResponse.SC_OK);
+
+            Cookie cookie = new Cookie("lastViewedOrder", id.toString());
+            cookie.setMaxAge(60 * 60); // 1 hour
+            resp.addCookie(cookie);
+
         } catch (OrderNotFoundException e) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
             resp.getWriter().print(errorJson(e.getMessage()));
