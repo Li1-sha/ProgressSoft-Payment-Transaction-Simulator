@@ -2,10 +2,15 @@ package com.progressoft.repository;
 
 import com.progressoft.domain.Order;
 import com.progressoft.exceptions.ReconciliationRequiredException;
-import com.progressoft.service.OrderService;
-import com.progressoft.validation.Validators;
 import com.progressoft.repository.jpa.JpaOrderRepository;
+import com.progressoft.service.OrderService;
+import com.progressoft.payment.PaymentGateway;
+import com.progressoft.validation.Validators;
 import org.junit.jupiter.api.Test;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -13,24 +18,26 @@ class JpaOrderRepositoryRollbackTest {
 
     @Test
     void rollbackOnDbFailureAfterCharge() throws Exception {
-        // 1. Create a JpaOrderRepository with a spy that throws on save
-        JpaOrderRepository realRepo = new JpaOrderRepository();
+        // Use a real JPA repository with a mock/spy
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("order-pu");
+        JpaOrderRepository realRepo = new JpaOrderRepository(emf);
         JpaOrderRepository spyRepo = org.mockito.Mockito.spy(realRepo);
 
-        // Force save to throw (simulate DB failure)
+        // Force saveWithEntityManager to throw
         org.mockito.Mockito.doThrow(new RuntimeException("Forced DB failure"))
-                .when(spyRepo).save(org.mockito.ArgumentMatchers.any(Order.class));
+                .when(spyRepo).saveWithEntityManager(
+                        org.mockito.ArgumentMatchers.any(Order.class),
+                        org.mockito.ArgumentMatchers.any(EntityManager.class)
+                );
 
-        // 2. Build OrderService with the spy repository
         OrderService service = new OrderService(
                 spyRepo,
-                order -> {}, // dummy gateway
+                order -> {},
                 Validators.positiveAmount(),
                 Validators.defaultCurrency("OMR"),
-                null // we don't need DataSource for this test (JPA uses its own)
+                null // DataSource not needed for JPA test
         );
 
-        // 3. Place an order – should throw ReconciliationRequiredException
         Order order = new Order();
         order.setCustomerName("RollbackTest");
         order.setAmount(100);
@@ -38,7 +45,9 @@ class JpaOrderRepositoryRollbackTest {
 
         assertThrows(ReconciliationRequiredException.class, () -> service.placeOrder(order));
 
-        // 4. Verify no row was persisted
+        // Verify no rows were persisted
         assertEquals(0, spyRepo.findAll().size());
+
+        emf.close();
     }
 }

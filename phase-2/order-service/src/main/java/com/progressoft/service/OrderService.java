@@ -4,9 +4,12 @@ import com.progressoft.domain.Order;
 import com.progressoft.exceptions.*;
 import com.progressoft.payment.PaymentGateway;
 import com.progressoft.repository.TransactionalOrderRepository;
+import com.progressoft.repository.jpa.EntityManagerFactoryProvider;
+import com.progressoft.repository.jpa.JpaOrderRepository;
 import com.progressoft.validation.OrderEnricher;
 import com.progressoft.validation.PaymentValidator;
 
+import javax.persistence.EntityManager;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -66,8 +69,28 @@ public class OrderService {
         paymentValidator.validate(enriched);
         paymentGateway.charge(enriched);
 
-        if (orderRepository instanceof TransactionalOrderRepository) {
-            TransactionalOrderRepository txRepo = orderRepository;
+        if (orderRepository instanceof JpaOrderRepository) {
+            // JPA path: use EntityManager transaction
+            JpaOrderRepository jpaRepo = (JpaOrderRepository) orderRepository;
+            EntityManager em = EntityManagerFactoryProvider.getEntityManagerFactory().createEntityManager();
+            try {
+                em.getTransaction().begin();
+                Order saved = jpaRepo.saveWithEntityManager(enriched, em);
+                em.getTransaction().commit();
+                return saved;
+            } catch (Exception e) {
+                if (em.getTransaction().isActive()) {
+                    em.getTransaction().rollback();
+                }
+                throw new ReconciliationRequiredException(
+                        "Order charged but DB write failed (JPA)", enriched, e
+                );
+            } finally {
+                em.close();
+            }
+        } else if (orderRepository instanceof TransactionalOrderRepository) {
+            // JDBC path (existing code)
+            TransactionalOrderRepository txRepo = (TransactionalOrderRepository) orderRepository;
             try {
                 Connection conn = dataSource.getConnection();
                 try {
@@ -76,27 +99,22 @@ public class OrderService {
                     conn.commit();
                     return saved;
                 } catch (SQLException e) {
-                    if (conn != null) {
-                        try { conn.rollback(); } catch (SQLException ignored) {}
-                    }
+                    if (conn != null) try { conn.rollback(); } catch (SQLException ignored) {}
                     throw new ReconciliationRequiredException(
                             "Order charged but DB write failed", enriched, e
                     );
                 } finally {
-                    if (conn != null) {
-                        try { conn.close(); } catch (SQLException ignored) {}
-                    }
+                    if (conn != null) try { conn.close(); } catch (SQLException ignored) {}
                 }
             } catch (UnsupportedOperationException e) {
-                // Fallback: repository doesn't support saveWithConnection (e.g., InMemory)
                 return orderRepository.save(enriched);
             } catch (SQLException e) {
-                // If getConnection() itself fails, wrap it
                 throw new ReconciliationRequiredException(
                         "Order charged but DB connection failed", enriched, e
                 );
             }
         } else {
+            // InMemory (or other non-transactional) path
             return orderRepository.save(enriched);
         }
     }
