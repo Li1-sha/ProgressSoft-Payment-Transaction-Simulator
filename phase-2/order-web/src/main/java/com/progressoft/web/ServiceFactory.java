@@ -67,9 +67,10 @@ public class ServiceFactory {
             } catch (Exception e) {
                 System.err.println("Error closing DataSource: " + e.getMessage());
             }
+            dataSource = null;
+            instance = null;
         }
         // Also close EntityManagerFactory via its own provider
         com.progressoft.repository.jpa.EntityManagerFactoryProvider.shutdown();
-        instance = null; // allow re‑initialisation if needed
     }
 }
