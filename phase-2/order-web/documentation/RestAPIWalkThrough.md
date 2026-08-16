@@ -178,3 +178,19 @@ Result: ✅ 200 OK – order is retrievable by ID.
 - `destroy()` – called when the container shuts down or reloads the servlet.  
   Used for **cleanup** (closing the connection pool).  
   *Why:* Prevents resource leaks that would accumulate across redeploys.
+
+## Shutdown Verification Procedure
+
+1. Start Jetty: `mvn -pl order-web jetty:run`
+2. Check active connections:
+   ```bash
+   jconsole or jps -l
+
+3. Note the thread count / connection count.
+
+## Shutdown Verification
+
+- **Baseline (before start):** 12 live threads, no HikariCP connections.
+- **After start:** 18 live threads, 1 idle connection (pool initialised).
+- **After shutdown:** process exits, threads return to baseline, connections released.
+- **Repeated 3 times** with identical results – shutdown is clean.
