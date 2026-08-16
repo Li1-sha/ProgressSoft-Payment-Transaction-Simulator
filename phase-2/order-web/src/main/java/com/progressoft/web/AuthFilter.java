@@ -1,17 +1,23 @@
 package com.progressoft.web;
 
+import com.progressoft.web.auth.ApiKeyAuthStrategy;
+import com.progressoft.web.auth.AuthStrategy;
+import com.progressoft.web.auth.SessionAuthStrategy;
+
 import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.List;
 
-@WebFilter("/api/orders/_")
+@WebFilter("/api/orders/*")
 public class AuthFilter implements Filter {
 
-    @Override
-    public void init(FilterConfig filterConfig) {}
+    private final List<AuthStrategy> strategies = List.of(
+            new SessionAuthStrategy(),
+            new ApiKeyAuthStrategy()
+    );
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -19,10 +25,10 @@ public class AuthFilter implements Filter {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
 
-        // Only POST requests require authentication
         if ("POST".equalsIgnoreCase(req.getMethod())) {
-            HttpSession session = req.getSession(false);
-            if (session == null || session.getAttribute("authenticated") == null) {
+            boolean authenticated = strategies.stream()
+                    .anyMatch(s -> s.isAuthenticated(req));
+            if (!authenticated) {
                 res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 res.setContentType("application/json");
                 res.getWriter().print("{\"error\":\"Authentication required\"}");
@@ -31,7 +37,4 @@ public class AuthFilter implements Filter {
         }
         chain.doFilter(request, response);
     }
-
-    @Override
-    public void destroy() {}
 }
