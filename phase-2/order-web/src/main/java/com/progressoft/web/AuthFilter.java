@@ -7,7 +7,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
 
-@WebFilter("/api/orders/_")
+@WebFilter("/api/orders/*")
 public class AuthFilter implements Filter {
 
     @Override
