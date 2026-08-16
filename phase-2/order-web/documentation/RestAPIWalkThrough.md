@@ -165,3 +165,16 @@ Result: ✅ 200 OK – order is retrievable by ID.
 - **Authentication**: Only `POST /api/orders` requires a session (returns `401` without it). All `GET` endpoints are open.
 - **Errors**: All failure responses are JSON with an `"error"` field and appropriate HTTP status.
 
+## Servlet Lifecycle – Setup Steps
+
+- `init()` – called once when the servlet is first loaded.  
+  Used for **heavy setup** (DataSource, repository, service) that should happen once and be reused across requests.  
+  *Why:* This avoids recreating the pool and service on every request (inefficient and wasteful).
+
+- `doGet()` / `doPost()` – called per request.  
+  Handles the HTTP method and returns the response.  
+  *Why:* Each request is independent; work should be minimal and stateless.
+
+- `destroy()` – called when the container shuts down or reloads the servlet.  
+  Used for **cleanup** (closing the connection pool).  
+  *Why:* Prevents resource leaks that would accumulate across redeploys.
