@@ -51,10 +51,12 @@ Choose repository at runtime
 mvn -pl order-web jetty:run -Drepo.type=jpa   # default is jdbc
 ```
 ### Testing
-Command	Description
-mvn test	: All unit + integration tests
-mvn test -Dgroups="integration"	: Only integration tests (H2, Jetty)
-mvn test -Dgroups="!integration"	: Only unit tests
+
+| Command | Scope | Description |
+|---------|-------|-------------|
+| `mvn test` | All tests | Runs all unit + integration tests |
+| `mvn test -Dgroups="integration"` | Integration only | Runs only integration tests (H2, Jetty) |
+| `mvn test -Dgroups="!integration"` | Unit only | Runs only unit tests (excludes integration) |
 
 ### Key Features:
 
