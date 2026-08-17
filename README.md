@@ -74,7 +74,7 @@ mvn -pl order-web jetty:run -Drepo.type=jpa   # default is jdbc
 
 | Pattern | Where | Why |
 |---------|-------|-----|
-| **Repository** | `Repository<ID,T>` | Abstracts data access, multiple implementations. |
+| **Repository** | `TransactionalOrderRepository` | Abstracts data access, multiple implementations. |
 | **Strategy** | `PaymentValidator` / `OrderEnricher` composition | Validators/enrichers combined at runtime. |
 | **Decorator / Proxy** | `RepositoryProxy` | Cross‑cutting logging without changing repositories. |
 | **Strategy (Auth)** | `AuthStrategy` | Session and API‑key authentication, easily extended. |
