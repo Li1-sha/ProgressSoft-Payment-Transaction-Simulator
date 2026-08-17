@@ -69,8 +69,8 @@ public class OrderService {
         paymentValidator.validate(enriched);
         paymentGateway.charge(enriched);
 
+        // ----- JPA path -----
         if (orderRepository instanceof JpaOrderRepository) {
-            // JPA path: use EntityManager transaction
             JpaOrderRepository jpaRepo = (JpaOrderRepository) orderRepository;
             EntityManager em = EntityManagerFactoryProvider.getEntityManagerFactory().createEntityManager();
             try {
@@ -88,8 +88,10 @@ public class OrderService {
             } finally {
                 em.close();
             }
-        } else if (orderRepository instanceof TransactionalOrderRepository) {
-            // JDBC path (existing code)
+        }
+
+        // ----- JDBC / transactional path -----
+        if (orderRepository instanceof TransactionalOrderRepository) {
             TransactionalOrderRepository txRepo = (TransactionalOrderRepository) orderRepository;
             try {
                 Connection conn = dataSource.getConnection();
@@ -107,16 +109,17 @@ public class OrderService {
                     if (conn != null) try { conn.close(); } catch (SQLException ignored) {}
                 }
             } catch (UnsupportedOperationException e) {
+                // Repository does not support saveWithConnection – fallback
                 return orderRepository.save(enriched);
             } catch (SQLException e) {
                 throw new ReconciliationRequiredException(
                         "Order charged but DB connection failed", enriched, e
                 );
             }
-        } else {
-            // InMemory (or other non-transactional) path
-            return orderRepository.save(enriched);
         }
+
+        // ----- Non‑transactional fallback (InMemory) -----
+        return orderRepository.save(enriched);
     }
         public Order findOrder (Long id){
             return orderRepository.findById(id)
