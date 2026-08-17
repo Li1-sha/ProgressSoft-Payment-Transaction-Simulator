@@ -9,15 +9,18 @@ import com.progressoft.repository.jpa.JpaOrderRepository;
 import com.progressoft.service.OrderService;
 import com.progressoft.validation.Validators;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -26,69 +29,76 @@ import static org.mockito.Mockito.*;
 class RepositoryContractTest {
 
     private TransactionalOrderRepository repository;
-    private OrderService service;        // ✅ stored as a field
+    private OrderService service;
     private DataSource dataSource;
+    private EntityManagerFactory emf; // for JPA only
+    private String repoName;
 
-    // ---------- Provider ----------
     static Stream<Arguments> repositoryProvider() {
         return Stream.of(
-                Arguments.of("InMemory", new InMemoryOrderRepository(), null),
-                Arguments.of("Jdbc", createJdbcRepo(), null),
-                Arguments.of("Jpa", createJpaRepo(), null)
+                Arguments.of("InMemory"),
+                Arguments.of("Jdbc"),
+                Arguments.of("Jpa")
         );
     }
 
-    private static TransactionalOrderRepository createJpaRepo() {
-        // Create a fresh EntityManagerFactory for the test
-        EntityManagerFactory emf = Persistence.createEntityManagerFactory("order-pu");
-        // Store it to close later? We'll close in tearDown via a helper.
-        return new JpaOrderRepository(emf);
+    @BeforeEach
+    void setUp(String name) {
+        this.repoName = name;
+        switch (name) {
+            case "InMemory":
+                repository = new InMemoryOrderRepository();
+                dataSource = null;
+                emf = null;
+                break;
+            case "Jdbc":
+                dataSource = TestDataSourceFactory.createHikariDataSource();
+                repository = new JdbcOrderRepository(dataSource);
+                // Clear table
+                try (Connection conn = dataSource.getConnection();
+                     Statement stmt = conn.createStatement()) {
+                    stmt.execute("DELETE FROM orders");
+                } catch (SQLException e) {
+                    throw new RuntimeException("Failed to clear table", e);
+                }
+                break;
+            case "Jpa":
+                emf = Persistence.createEntityManagerFactory("order-pu");
+                repository = new JpaOrderRepository(emf);
+                // Clear table (or rely on create-drop)
+                EntityManager em = emf.createEntityManager();
+                em.getTransaction().begin();
+                em.createQuery("DELETE FROM Order").executeUpdate();
+                em.getTransaction().commit();
+                em.close();
+                break;
+        }
+        // Build service
+        PaymentGateway gateway = order -> {};
+        this.service = new OrderService(
+                repository,
+                gateway,
+                Validators.positiveAmount(),
+                Validators.defaultCurrency("OMR"),
+                dataSource // may be null for InMemory and JPA
+        );
     }
 
-    private static TransactionalOrderRepository createJdbcRepo() {
-        DataSource ds = TestDataSourceFactory.createHikariDataSource();
-        return new JdbcOrderRepository(ds);
-    }
-
-    // Cleanup after each test
     @AfterEach
     void tearDown() throws Exception {
         if (dataSource instanceof AutoCloseable) {
             ((AutoCloseable) dataSource).close();
         }
-    }
-
-    // Helper to set up service and clear data
-    private void init(String name, TransactionalOrderRepository repo, DataSource ds) {
-        this.repository = repo;
-        this.dataSource = ds;
-        // Clear any existing data
-        clearData(repo);
-        // Build service
-        PaymentGateway gateway = order -> {};
-        this.service = new OrderService(
-                repo,
-                gateway,
-                Validators.positiveAmount(),
-                Validators.defaultCurrency("OMR"),
-                ds // may be null
-        );
-    }
-
-    private void clearData(TransactionalOrderRepository repo) {
-        try {
-            repo.deleteAll(repo.findAll().stream().map(Order::getId).collect(java.util.stream.Collectors.toList()));
-        } catch (Exception e) {
-            // ignore if not supported
+        if (emf != null && emf.isOpen()) {
+            emf.close();
         }
     }
 
-    // ---------- Test: CRUD ----------
+    // ---------- Tests ----------
     @ParameterizedTest
     @MethodSource("repositoryProvider")
-    void testCrudRoundTrip(String name, TransactionalOrderRepository repo, DataSource ds) {
-        init(name, repo, ds);
-
+    void testCrudRoundTrip(String name) throws Exception {
+        setUp(name);
         Order order = new Order();
         order.setCustomerName("ContractTest");
         order.setAmount(50.0);
@@ -108,14 +118,13 @@ class RepositoryContractTest {
         repository.deleteById(saved.getId());
         assertFalse(repository.existsById(saved.getId()));
         assertEquals(0, repository.count());
+        tearDown();
     }
 
-    // ---------- Test: exists / count ----------
     @ParameterizedTest
     @MethodSource("repositoryProvider")
-    void testExistsAndCount(String name, TransactionalOrderRepository repo, DataSource ds) {
-        init(name, repo, ds);
-
+    void testExistsAndCount(String name) throws Exception {
+        setUp(name);
         assertEquals(0, repository.count());
 
         Order o1 = new Order();
@@ -135,17 +144,15 @@ class RepositoryContractTest {
         assertTrue(repository.existsById(o1.getId()));
         assertTrue(repository.existsById(saved2.getId()));
         assertFalse(repository.existsById(999L));
+        tearDown();
     }
 
-    // ---------- Test: rollback / fallback ----------
     @ParameterizedTest
     @MethodSource("repositoryProvider")
-    void testRollbackOnFailure(String name, TransactionalOrderRepository repo, DataSource ds) throws Exception {
-        init(name, repo, ds);
-
+    void testRollbackOnFailure(String name) throws Exception {
+        setUp(name);
         if ("Jdbc".equals(name)) {
-            // Use a spy to force SQLException
-            JdbcOrderRepository realRepo = (JdbcOrderRepository) repo;
+            JdbcOrderRepository realRepo = (JdbcOrderRepository) repository;
             JdbcOrderRepository spyRepo = spy(realRepo);
             // Rebuild service with spy
             PaymentGateway gateway = order -> {};
@@ -154,7 +161,7 @@ class RepositoryContractTest {
                     gateway,
                     Validators.positiveAmount(),
                     Validators.defaultCurrency("OMR"),
-                    ds
+                    dataSource
             );
 
             doThrow(new SQLException("Forced failure"))
@@ -166,25 +173,21 @@ class RepositoryContractTest {
             order.setCurrency("USD");
 
             assertThrows(ReconciliationRequiredException.class, () -> spyService.placeOrder(order));
-            // Ensure no row persisted
             assertEquals(0, spyRepo.findAll().size());
 
         } else if ("Jpa".equals(name)) {
-            // Test that saveWithConnection throws UnsupportedOperationException
-            JpaOrderRepository jpaRepo = (JpaOrderRepository) repo;
+            JpaOrderRepository jpaRepo = (JpaOrderRepository) repository;
             assertThrows(UnsupportedOperationException.class, () ->
                     jpaRepo.saveWithConnection(new Order(), null));
 
-            // Also test that placeOrder works (falls back to save)
             Order order = new Order();
             order.setCustomerName("JpaFallback");
             order.setAmount(200);
             order.setCurrency("EUR");
-            Order placed = service.placeOrder(order);   // ✅ uses the field
+            Order placed = service.placeOrder(order);
             assertNotNull(placed.getId());
 
         } else {
-            // InMemory: normal save works
             Order order = new Order();
             order.setCustomerName("InMemoryTest");
             order.setAmount(50);
@@ -192,5 +195,6 @@ class RepositoryContractTest {
             Order placed = service.placeOrder(order);
             assertNotNull(placed.getId());
         }
+        tearDown();
     }
 }
