@@ -3,6 +3,8 @@
 A modular Java order management system built as part of the ProgressSoft internship program.  
 It demonstrates **layered architecture**, **multi‑module Maven**, **JDBC & JPA repositories**, **concurrent processing**, **file import**, **REST API with session & API‑key auth**, and a **thread‑safe rate limiter**.
 
+In 'phase-2' folder.
+
 ---
 
 ## Module Structure
