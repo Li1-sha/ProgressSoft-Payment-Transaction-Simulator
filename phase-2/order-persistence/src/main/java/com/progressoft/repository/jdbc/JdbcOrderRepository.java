@@ -1,6 +1,8 @@
 package com.progressoft.repository.jdbc;
 
 import com.progressoft.domain.Order;
+import com.progressoft.repository.OrderRepository;
+import com.progressoft.repository.Repository;
 import com.progressoft.repository.TransactionalOrderRepository;
 
 import javax.sql.DataSource;
