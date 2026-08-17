@@ -70,7 +70,6 @@ public class OrderService {
         paymentGateway.charge(enriched);
 
         if (orderRepository instanceof JpaOrderRepository) {
-            // JPA path: use EntityManager transaction
             JpaOrderRepository jpaRepo = (JpaOrderRepository) orderRepository;
             EntityManager em = EntityManagerFactoryProvider.getEntityManagerFactory().createEntityManager();
             try {
@@ -114,7 +113,6 @@ public class OrderService {
                 );
             }
         } else {
-            // InMemory (or other non-transactional) path
             return orderRepository.save(enriched);
         }
     }
