@@ -13,6 +13,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -30,19 +32,22 @@ class RepositoryContractTest {
     // ---------- Provider ----------
     static Stream<Arguments> repositoryProvider() {
         return Stream.of(
-                Arguments.of("InMemory", (TransactionalOrderRepository) new InMemoryOrderRepository(), null),
+                Arguments.of("InMemory", new InMemoryOrderRepository(), null),
                 Arguments.of("Jdbc", createJdbcRepo(), null),
                 Arguments.of("Jpa", createJpaRepo(), null)
         );
     }
 
+    private static TransactionalOrderRepository createJpaRepo() {
+        // Create a fresh EntityManagerFactory for the test
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("order-pu");
+        // Store it to close later? We'll close in tearDown via a helper.
+        return new JpaOrderRepository(emf);
+    }
+
     private static TransactionalOrderRepository createJdbcRepo() {
         DataSource ds = TestDataSourceFactory.createHikariDataSource();
         return new JdbcOrderRepository(ds);
-    }
-
-    private static TransactionalOrderRepository createJpaRepo() {
-        return new JpaOrderRepository();
     }
 
     // Cleanup after each test
